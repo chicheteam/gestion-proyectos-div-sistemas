@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>División Sistemas - Sistema de Gestión de Proyectos</title>
+  
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon">🏛️</div>
+        <div class="sidebar-brand-text">
+          <h1>División Sistemas</h1>
+          <span>Gestión de Proyectos</span>
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-label">Menú Principal</div>
+        
+        <div class="sidebar-nav-item active" id="nav-dashboard" onclick="App.navigateTo('dashboard')">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </div>
+        
+        <div class="sidebar-nav-item" id="nav-projects" onclick="App.navigateTo('projects')">
+          <i data-lucide="folder-kanban"></i>
+          <span>Proyectos</span>
+          <span class="sidebar-nav-badge" id="badge-projects-count">0</span>
+        </div>
+        
+        <div class="sidebar-nav-item" id="nav-kanban" onclick="App.navigateTo('kanban')">
+          <i data-lucide="kanban-square"></i>
+          <span>Tablero Kanban</span>
+        </div>
+        
+        <div class="sidebar-nav-item" id="nav-team" onclick="App.navigateTo('team')">
+          <i data-lucide="users"></i>
+          <span>Equipo</span>
+        </div>
+        
+        <div class="sidebar-nav-item" id="nav-reports" onclick="App.navigateTo('reports')">
+          <i data-lucide="file-bar-chart"></i>
+          <span>Reportes</span>
+        </div>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-info">
+          <div class="sidebar-footer-avatar">JD</div>
+          <div class="sidebar-footer-text">
+            <strong>Jefe de División</strong>
+            <span>División Sistemas</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="header">
+        <div class="header-left">
+          <span class="header-breadcrumb" id="header-breadcrumb">División Sistemas / Dashboard</span>
+          <h2 class="header-page-title" id="header-title">Dashboard Ejecutivo</h2>
+        </div>
+        
+        <div class="header-right">
+          <!-- Global Search -->
+          <div class="header-search" id="header-search-container">
+            <i data-lucide="search"></i>
+            <input type="text" placeholder="Buscar..." id="global-search-input">
+          </div>
+          
+          <button class="header-action-btn" id="btn-notifications" title="Notificaciones">
+            <i data-lucide="bell"></i>
+            <span class="badge-dot" id="notifications-badge-dot"></span>
+          </button>
+          <div class="notifications-dropdown" id="notifications-dropdown"></div>
+        </div>
+      </header>
+
+      <!-- Page Content Target -->
+      <div class="page-content" id="page-content"></div>
+    </main>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Chart.js and Lucide Icons CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Data Layer & Business Logic -->
+  <script src="js/migrated_data.js"></script>
+  <script src="js/data.js"></script>
+  
+  <!-- Views -->
+  <script src="js/views/dashboard.js"></script>
+  <script src="js/views/projects.js"></script>
+  <script src="js/views/kanban.js"></script>
+  <script src="js/views/team.js"></script>
+  <script src="js/views/reports.js"></script>
+  
+  <!-- Notifications Engine -->
+  <script src="js/notifications.js"></script>
+
+  <!-- Application Bootstrapper -->
+  <script src="js/app.js"></script>
+</body>
+</html>
