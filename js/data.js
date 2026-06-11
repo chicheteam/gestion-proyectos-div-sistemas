@@ -19,7 +19,8 @@ const DataStore = (() => {
     { id: 'testing', label: 'Testing / QA', color: '#eab308', badgeClass: 'badge-testing', order: 4 },
     { id: 'produccion', label: 'En Producción', color: '#22c55e', badgeClass: 'badge-produccion', order: 5 },
     { id: 'pausado', label: 'Pausado', color: '#f97316', badgeClass: 'badge-pausado', order: 6 },
-    { id: 'cancelado', label: 'Cancelado', color: '#ef4444', badgeClass: 'badge-cancelado', order: 7 }
+    { id: 'cancelado', label: 'Cancelado', color: '#ef4444', badgeClass: 'badge-cancelado', order: 7 },
+    { id: 'archivado', label: 'Archivado', color: '#94a3b8', badgeClass: 'badge-archivado', order: 8 }
   ];
 
   const PRIORITIES = [
@@ -126,6 +127,16 @@ const DataStore = (() => {
     const index = projects.findIndex(p => p.id === id);
     if (index === -1) return null;
     const oldProject = { ...projects[index] };
+
+    // Auto-set fechaProduccion when transitioning to 'produccion'
+    if (updates.estado === 'produccion' && oldProject.estado !== 'produccion') {
+      updates.fechaProduccion = new Date().toISOString().split('T')[0];
+    }
+    // Clear fechaProduccion if leaving produccion to another state (except archivado)
+    if (updates.estado && updates.estado !== 'produccion' && updates.estado !== 'archivado' && oldProject.estado === 'produccion') {
+      updates.fechaProduccion = '';
+    }
+
     projects[index] = { ...projects[index], ...updates, updatedAt: new Date().toISOString() };
     saveToStorage(STORAGE_KEYS.PROJECTS, projects);
 
@@ -140,6 +151,34 @@ const DataStore = (() => {
       addHistory('update', 'project', id, `Proyecto "${projects[index].nombre}" actualizado: ${changes.join(', ')}`);
     }
     return projects[index];
+  }
+
+  function autoArchiveOldProductionProjects() {
+    const projects = getProjects();
+    const now = new Date();
+    let changed = false;
+
+    for (let i = 0; i < projects.length; i++) {
+      const p = projects[i];
+      if (p.estado === 'produccion' && !p.kanbanPinned) {
+        const prodDate = p.fechaProduccion || p.fechaRealFin;
+        if (prodDate) {
+          const start = new Date(prodDate + 'T12:00:00');
+          const diffDays = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+          if (diffDays > 60) {
+            projects[i].estado = 'archivado';
+            projects[i].updatedAt = new Date().toISOString();
+            changed = true;
+            addHistory('update', 'project', p.id, `Proyecto "${p.nombre}" archivado automáticamente (más de 60 días en producción)`);
+          }
+        }
+      }
+    }
+
+    if (changed) {
+      saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    }
+    return changed;
   }
 
   function deleteProject(id) {
@@ -183,6 +222,29 @@ const DataStore = (() => {
     return true;
   }
 
+  function updateMinuta(projectId, minutaId, minutaData) {
+    const projects = getProjects();
+    const p = projects.find(p => p.id === projectId);
+    if (!p || !p.minutas) return null;
+    const index = p.minutas.findIndex(m => m.id === minutaId);
+    if (index === -1) return null;
+
+    const oldMinuta = p.minutas[index];
+    const updatedMinuta = {
+      ...oldMinuta,
+      titulo: minutaData.titulo !== undefined ? minutaData.titulo : oldMinuta.titulo,
+      fecha: minutaData.fecha !== undefined ? minutaData.fecha : oldMinuta.fecha,
+      archivo: minutaData.archivo !== undefined ? minutaData.archivo : oldMinuta.archivo,
+      updatedAt: new Date().toISOString()
+    };
+
+    p.minutas[index] = updatedMinuta;
+    p.updatedAt = new Date().toISOString();
+    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    addHistory('update', 'project', projectId, `Minuta "${updatedMinuta.titulo}" actualizada`);
+    return updatedMinuta;
+  }
+
   function addTicketMantis(projectId, ticketData) {
     const projects = getProjects();
     const p = projects.find(p => p.id === projectId);
@@ -213,6 +275,36 @@ const DataStore = (() => {
     return true;
   }
 
+  function addTicketTaiga(projectId, ticketData) {
+    const projects = getProjects();
+    const p = projects.find(p => p.id === projectId);
+    if (!p) return null;
+    if (!p.ticketsTaiga) p.ticketsTaiga = [];
+    const ticket = {
+      id: generateId(),
+      fecha: ticketData.fecha || new Date().toISOString().split('T')[0],
+      url: ticketData.url || '',
+      descripcion: ticketData.descripcion || '',
+      createdAt: new Date().toISOString()
+    };
+    p.ticketsTaiga.push(ticket);
+    p.updatedAt = new Date().toISOString();
+    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    addHistory('update', 'project', projectId, `Enlace Taiga agregado: ${ticket.descripcion.substring(0, 50)}`);
+    return ticket;
+  }
+
+  function removeTicketTaiga(projectId, ticketId) {
+    const projects = getProjects();
+    const p = projects.find(p => p.id === projectId);
+    if (!p || !p.ticketsTaiga) return false;
+    p.ticketsTaiga = p.ticketsTaiga.filter(t => t.id !== ticketId);
+    p.updatedAt = new Date().toISOString();
+    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    addHistory('update', 'project', projectId, `Enlace Taiga eliminado`);
+    return true;
+  }
+
   /* ── TEAM CRUD ── */
   function getTeam() {
     return getFromStorage(STORAGE_KEYS.TEAM) || [];
@@ -232,6 +324,9 @@ const DataStore = (() => {
       destino: memberData.destino || '',
       rol: memberData.rol || 'Desarrollador',
       email: memberData.email || '',
+      celular: memberData.celular || '',
+      telefonoTrabajo: memberData.telefonoTrabajo || '',
+      isExterno: !!memberData.isExterno,
       activo: memberData.activo !== undefined ? memberData.activo : true,
       maxProyectos: memberData.maxProyectos || 5,
       createdAt: new Date().toISOString()
@@ -284,9 +379,9 @@ const DataStore = (() => {
 
   /* ── ANALYTICS ── */
   function getProjectsByStatus() {
-    const projects = getProjects();
+    const projects = getProjects().filter(p => p.estado !== 'archivado');
     const result = {};
-    STATUSES.forEach(s => { result[s.id] = 0; });
+    STATUSES.filter(s => s.id !== 'archivado').forEach(s => { result[s.id] = 0; });
     projects.forEach(p => {
       if (result[p.estado] !== undefined) result[p.estado]++;
     });
@@ -294,7 +389,7 @@ const DataStore = (() => {
   }
 
   function getProjectsByPriority() {
-    const projects = getProjects();
+    const projects = getProjects().filter(p => p.estado !== 'archivado');
     const result = {};
     PRIORITIES.forEach(p => { result[p.id] = 0; });
     projects.forEach(p => {
@@ -356,7 +451,7 @@ const DataStore = (() => {
 
     return projects
       .filter(p => {
-        if (!p.fechaEstimadaFin || p.estado === 'produccion' || p.estado === 'cancelado') return false;
+        if (!p.fechaEstimadaFin || ['produccion', 'cancelado', 'archivado'].includes(p.estado)) return false;
         const deadline = new Date(p.fechaEstimadaFin);
         return deadline <= limit;
       })
@@ -396,7 +491,7 @@ const DataStore = (() => {
       months[key] = { label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`, created: 0, completed: 0, desarrollo: 0 };
     }
 
-    projects.forEach(p => {
+    projects.filter(p => p.estado !== 'archivado').forEach(p => {
       // Use fechaSolicitud (real request date) instead of createdAt (migration timestamp)
       const createdKey = (p.fechaSolicitud || p.createdAt || '').substring(0, 7);
       const completedKey = p.fechaRealFin ? p.fechaRealFin.substring(0, 7) : null;
@@ -808,9 +903,12 @@ const DataStore = (() => {
     deleteProject,
     // Minutas & Tickets
     addMinuta,
+    updateMinuta,
     removeMinuta,
     addTicketMantis,
     removeTicketMantis,
+    addTicketTaiga,
+    removeTicketTaiga,
     // Team
     getTeam,
     getTeamMemberById,
@@ -832,6 +930,7 @@ const DataStore = (() => {
     // Seed
     seedSampleData,
     // Helpers
+    autoArchiveOldProductionProjects,
     getTeamMemberName: (id) => {
       if (!id) return '—';
       const member = getTeam().find(m => m.id === id);

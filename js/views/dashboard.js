@@ -10,7 +10,8 @@ const DashboardView = (() => {
   let selectedMonthlyPeriod = '6';
 
   function render() {
-    const projects = DataStore.getProjects();
+    const allProjects = DataStore.getProjects();
+    const projects = allProjects.filter(p => p.estado !== 'archivado');
     const team = DataStore.getTeam();
     const activeProjects = projects.filter(p => !['produccion', 'cancelado'].includes(p.estado));
     const completedProjects = projects.filter(p => p.estado === 'produccion');
@@ -78,7 +79,7 @@ const DashboardView = (() => {
             <span class="kpi-card-trend up">✓</span>
           </div>
           <div class="kpi-card-value">${completedProjects.length}</div>
-          <div class="kpi-card-label">En Producción</div>
+          <div class="kpi-card-label">Nuevos en Producción (&lt;60d)</div>
         </div>
         <div class="kpi-card animate-slide-up stagger-5" style="cursor: pointer;" onclick="ProjectsView.setFilter('pausado'); App.navigateTo('projects');" title="Ver proyectos pausados o bloqueados">
           <div class="kpi-card-header">
@@ -702,7 +703,7 @@ const DashboardView = (() => {
   }
 
   function renderDifficultyChart() {
-    const projects = DataStore.getProjects();
+    const projects = DataStore.getProjects().filter(p => p.estado !== 'archivado');
     const scale = DataStore.DIFFICULTY_SCALE;
     const counts = scale.map(d => projects.filter(p => p.dificultad === d.value).length);
     const ctx = document.getElementById('chart-difficulty');

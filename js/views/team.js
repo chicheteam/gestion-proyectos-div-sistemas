@@ -26,6 +26,9 @@ const TeamView = (() => {
         <button class="tab ${currentTab === 'members' ? 'active' : ''}" onclick="TeamView.switchTab('members')">
           👥 Miembros del Equipo
         </button>
+        <button class="tab ${currentTab === 'externals' ? 'active' : ''}" onclick="TeamView.switchTab('externals')">
+          🤝 Contactos Externos
+        </button>
       </div>
 
       <div id="team-content"></div>
@@ -96,6 +99,7 @@ const TeamView = (() => {
     `;
 
     if (currentTab === 'workload') renderWorkload();
+    else if (currentTab === 'externals') renderExternals();
     else renderMembers();
     if (window.lucide) lucide.createIcons();
   }
@@ -109,7 +113,7 @@ const TeamView = (() => {
   /* ── Workload Dashboard ── */
   function renderWorkload() {
     const teamContent = document.getElementById('team-content');
-    const workload = DataStore.getTeamWorkload();
+    const workload = DataStore.getTeamWorkload().filter(w => !w.member.isExterno);
 
     if (workload.length === 0) {
       teamContent.innerHTML = `
@@ -211,17 +215,42 @@ const TeamView = (() => {
     if (window.lucide) lucide.createIcons();
   }
 
+  function getAvatarStyle(jerarquia, nombre, apellido) {
+    let bg = null;
+    let color = '#ffffff';
+    const j = (jerarquia || '').toLowerCase().trim();
+
+    if (j === 'prefecto principal' || j === 'pp') {
+      bg = 'linear-gradient(135deg, #a855f7, #6b21a8)'; // Púrpura
+    } else if (j === 'prefecto' || j === 'pr') {
+      bg = 'linear-gradient(135deg, #3b82f6, #1d4ed8)'; // Azul
+    } else if (j === 'subprefecto' || j === 'sp') {
+      bg = 'linear-gradient(135deg, #38bdf8, #0284c7)'; // Celeste
+    } else if (j === 'oficial principal' || j === 'op' || j === 'oficial auxiliar' || j === 'ox' || j === 'oficial ayudante' || j === 'oa') {
+      bg = 'linear-gradient(135deg, #f8fafc, #cbd5e1)'; // Blanco
+      color = '#0f172a';
+    } else if (j === 'ayudante mayor' || j === 'am' || j === 'ayudante principal' || j === 'ap') {
+      bg = 'linear-gradient(135deg, #22c55e, #15803d)'; // Verde
+    } else if (j === 'ayudante de primera' || j === 'ai' || j === 'ayudante de segunda' || j === 'as' || j === 'ayudante de tercera' || j === 'at') {
+      bg = 'linear-gradient(135deg, #facc15, #b45309)'; // Amarillo
+    } else if (j === 'cabo primero' || j === 'ci' || j === 'cabo segundo' || j === 'cs' || j === 'marinero' || j === 'mo') {
+      bg = 'linear-gradient(135deg, #f43f5e, #be123c)'; // Rojo
+    } else {
+      const hue = ((nombre || 'A').charCodeAt(0) * 37 + (apellido || 'A').charCodeAt(0) * 53) % 360;
+      bg = `linear-gradient(135deg, hsl(${hue}, 70%, 50%), hsl(${(hue + 40) % 360}, 70%, 45%))`;
+    }
+
+    return `background:${bg}; color:${color};`;
+  }
+
   function renderWorkloadCard(w) {
     const initials = (w.member.nombre[0] + w.member.apellido[0]).toUpperCase();
-
-    // Generate avatar gradient based on name
-    const hue = (w.member.nombre.charCodeAt(0) * 37 + w.member.apellido.charCodeAt(0) * 53) % 360;
-    const gradient = `linear-gradient(135deg, hsl(${hue}, 70%, 50%), hsl(${(hue + 40) % 360}, 70%, 45%))`;
+    const avatarStyle = getAvatarStyle(w.member.jerarquia, w.member.nombre, w.member.apellido);
 
     return `
       <div class="team-card animate-slide-up">
         <div class="team-card-header" style="cursor:pointer;" onclick="TeamView.openManageProjectsModal('${w.member.id}')" title="Gestionar proyectos del integrante">
-          <div class="team-card-avatar" style="background:${gradient};">${initials}</div>
+          <div class="team-card-avatar" style="${avatarStyle}">${initials}</div>
           <div class="team-card-info">
             <h3 style="display:flex;align-items:center;gap:6px;">
               ${w.fullName}
@@ -229,22 +258,41 @@ const TeamView = (() => {
             </h3>
             <span>${w.member.rol}${w.member.destino ? ` — ${w.member.destino}` : ''}</span>
           </div>
-          <div class="team-card-status ${w.loadClass}">
-            ${w.loadLabel}
-          </div>
+          ${w.member.isExterno ? `
+            <div class="team-card-status available" style="background:var(--primary-500);color:white;font-size:0.6rem;padding:2px 6px;">EXTERNO</div>
+          ` : `
+            <div class="team-card-status ${w.loadClass}">
+              ${w.loadLabel}
+            </div>
+          `}
         </div>
 
-        <div class="team-card-load load-${w.loadLevel}">
-          <div class="team-card-load-header">
-            <span class="team-card-load-label">Carga de Trabajo</span>
-            <span class="team-card-load-value" style="color:var(--status-${w.loadLevel === 'green' ? 'green' : w.loadLevel === 'yellow' ? 'yellow' : w.loadLevel === 'orange' ? 'orange' : 'red'});">
-              ${w.count} / ${w.max} proyectos
-            </span>
+        ${w.member.isExterno ? `
+          <div style="background:var(--bg-tertiary);padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:0.75rem;">
+            ${w.member.email ? `<div style="margin-bottom:4px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
+              <i data-lucide="mail" style="width:12px;height:12px;color:var(--text-tertiary);"></i> ${w.member.email}
+            </div>` : ''}
+            ${w.member.celular ? `<div style="margin-bottom:4px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
+              <i data-lucide="smartphone" style="width:12px;height:12px;color:var(--text-tertiary);"></i> ${w.member.celular}
+            </div>` : ''}
+            ${w.member.telefonoTrabajo ? `<div style="color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
+              <i data-lucide="phone" style="width:12px;height:12px;color:var(--text-tertiary);"></i> ${w.member.telefonoTrabajo}
+            </div>` : ''}
+            ${!w.member.email && !w.member.celular && !w.member.telefonoTrabajo ? '<div style="color:var(--text-tertiary);">Sin datos de contacto</div>' : ''}
           </div>
-          <div class="load-bar">
-            <div class="load-bar-fill" style="width:${w.loadPercentage}%;"></div>
+        ` : `
+          <div class="team-card-load load-${w.loadLevel}">
+            <div class="team-card-load-header">
+              <span class="team-card-load-label">Carga de Trabajo</span>
+              <span class="team-card-load-value" style="color:var(--status-${w.loadLevel === 'green' ? 'green' : w.loadLevel === 'yellow' ? 'yellow' : w.loadLevel === 'orange' ? 'orange' : 'red'});">
+                ${w.count} / ${w.max} proyectos
+              </span>
+            </div>
+            <div class="load-bar">
+              <div class="load-bar-fill" style="width:${w.loadPercentage}%;"></div>
+            </div>
           </div>
-        </div>
+        `}
 
         ${w.assignedProjects.length > 0 ? `
           <div class="team-card-projects">
@@ -272,9 +320,34 @@ const TeamView = (() => {
     `;
   }
 
-  /* ── Members List ── */
+  function renderExternals() {
+    const teamContent = document.getElementById('team-content');
+    const workload = DataStore.getTeamWorkload().filter(w => w.member.isExterno);
+
+    if (workload.length === 0) {
+      teamContent.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🤝</div>
+          <h3>Sin contactos externos</h3>
+          <p>Agregá contactos externos o stakeholders al sistema.</p>
+          <button class="btn btn-primary" onclick="TeamView.openMemberForm()">
+            <i data-lucide="user-plus" style="width:16px;height:16px;"></i> Agregar Contacto
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    teamContent.innerHTML = `
+      <div class="workload-grid" style="margin-top:20px;">
+        ${workload.map(w => renderWorkloadCard(w)).join('')}
+      </div>
+    `;
+  }
+
+  /* ── Member List (Table) ── */
   function renderMembers() {
-    const team = DataStore.getTeam();
+    const team = DataStore.getTeam().filter(m => !m.isExterno);
     const teamContent = document.getElementById('team-content');
 
     if (team.length === 0) {
@@ -301,7 +374,7 @@ const TeamView = (() => {
                 <th>Miembro</th>
                 <th>Rol</th>
                 <th>Destino</th>
-                <th>Email</th>
+                <th>Contacto</th>
                 <th>Estado</th>
                 <th>Máx. Proyectos</th>
                 <th>Proyectos Activos</th>
@@ -313,13 +386,13 @@ const TeamView = (() => {
                 const workload = DataStore.getTeamWorkload().find(w => w.member.id === m.id);
                 const count = workload ? workload.count : 0;
                 const initials = (m.nombre[0] + m.apellido[0]).toUpperCase();
-                const hue = (m.nombre.charCodeAt(0) * 37 + m.apellido.charCodeAt(0) * 53) % 360;
+                const avatarStyle = getAvatarStyle(m.jerarquia, m.nombre, m.apellido);
 
                 return `
                   <tr>
                     <td>
                       <div class="flex items-center gap-3">
-                        <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,hsl(${hue},70%,50%),hsl(${(hue+40)%360},70%,45%));display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;color:white;flex-shrink:0;">
+                        <div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;flex-shrink:0;${avatarStyle}">
                           ${initials}
                         </div>
                         <div>
@@ -330,15 +403,29 @@ const TeamView = (() => {
                         </div>
                       </div>
                     </td>
-                    <td><span class="badge" style="background:rgba(99,102,241,0.1);color:var(--primary-400);">${m.rol}</span></td>
+                    <td>
+                      ${m.isExterno ? `
+                        <span class="badge" style="background:var(--primary-500);color:white;margin-bottom:4px;display:inline-block;">EXTERNO</span><br>
+                        <span style="font-size:0.7rem;color:var(--text-tertiary);">${m.rol}</span>
+                      ` : `
+                        <span class="badge" style="background:rgba(99,102,241,0.1);color:var(--primary-400);">${m.rol}</span>
+                      `}
+                    </td>
                     <td><span style="font-weight:600;font-family:monospace;color:var(--text-secondary);font-size:0.78rem;">${m.destino || '—'}</span></td>
-                    <td style="font-size:0.78rem;">${m.email || '—'}</td>
+                    <td>
+                      <div style="font-size:0.75rem;color:var(--text-secondary);line-height:1.4;">
+                        ${m.email ? `<div><i data-lucide="mail" style="width:10px;height:10px;margin-right:4px;"></i>${m.email}</div>` : ''}
+                        ${m.celular ? `<div><i data-lucide="smartphone" style="width:10px;height:10px;margin-right:4px;"></i>${m.celular}</div>` : ''}
+                        ${m.telefonoTrabajo ? `<div><i data-lucide="phone" style="width:10px;height:10px;margin-right:4px;"></i>${m.telefonoTrabajo}</div>` : ''}
+                        ${!m.email && !m.celular && !m.telefonoTrabajo ? '—' : ''}
+                      </div>
+                    </td>
                     <td>
                       <span class="badge ${m.activo ? 'badge-produccion' : 'badge-cancelado'}">
                         ${m.activo ? 'Activo' : 'Inactivo'}
                       </span>
                     </td>
-                    <td style="text-align:center;font-weight:600;">${m.maxProyectos}</td>
+                    <td style="text-align:center;font-weight:600;">${m.isExterno ? '—' : m.maxProyectos}</td>
                     <td style="text-align:center;font-weight:600;">${count}</td>
                     <td>
                       <div class="flex gap-2">
@@ -400,9 +487,27 @@ const TeamView = (() => {
             ${DataStore.ROLES.map(r => `<option value="${r}" ${member?.rol === r ? 'selected' : ''}>${r}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Email</label>
-          <input type="email" class="form-input" id="member-email" value="${member?.email || ''}" placeholder="usuario@organismo.gob">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-input" id="member-email" value="${member?.email || ''}" placeholder="usuario@organismo.gob">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding-bottom:10px;">
+              <input type="checkbox" id="member-isExterno" ${member?.isExterno ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--primary-500);">
+              <span style="font-size:0.8rem;color:var(--text-primary);font-weight:600;">Personal Externo / Contacto</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Celular</label>
+            <input type="text" class="form-input" id="member-celular" value="${member?.celular || ''}" placeholder="Ej: +54 9 11 1234-5678">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Teléfono (Interno)</label>
+            <input type="text" class="form-input" id="member-telefonoTrabajo" value="${member?.telefonoTrabajo || ''}" placeholder="Ej: Int. 4321">
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -444,6 +549,9 @@ const TeamView = (() => {
       jerarquia: document.getElementById('member-jerarquia').value.trim(),
       destino: document.getElementById('member-destino').value.trim().toUpperCase(),
       email: document.getElementById('member-email').value.trim(),
+      celular: document.getElementById('member-celular').value.trim(),
+      telefonoTrabajo: document.getElementById('member-telefonoTrabajo').value.trim(),
+      isExterno: document.getElementById('member-isExterno').checked,
       maxProyectos: parseInt(document.getElementById('member-maxProyectos').value) || 5,
       activo: document.getElementById('member-activo').value === 'true'
     };
@@ -509,7 +617,11 @@ const TeamView = (() => {
       liderTecnico: 'Líder Técnico',
       scrumMaster: 'Scrum Master',
       productOwner: 'Product Owner',
-      desarrollador: 'Desarrollador'
+      desarrollador: 'Desarrollador',
+      analistaFuncional: 'Analista Funcional',
+      qaTester: 'QA / Tester',
+      dba: 'DBA',
+      uxuiDesigner: 'UX/UI Designer'
     };
     return names[roleKey] || roleKey;
   }
@@ -539,7 +651,7 @@ const TeamView = (() => {
       if (p.scrumMaster === memberId) assigned.push({ project: p, roleKey: 'scrumMaster', roleName: 'Scrum Master' });
       if (p.productOwner === memberId) assigned.push({ project: p, roleKey: 'productOwner', roleName: 'Product Owner' });
       if (p.desarrolladores && p.desarrolladores.includes(memberId)) {
-        assigned.push({ project: p, roleKey: 'desarrollador', roleName: 'Desarrollador' });
+        assigned.push({ project: p, roleKey: 'desarrollador', roleName: member.rol || 'Desarrollador' });
       }
     });
 
@@ -561,6 +673,7 @@ const TeamView = (() => {
             <thead>
               <tr>
                 <th>Proyecto</th>
+                <th>Etapa</th>
                 <th>Rol</th>
                 <th>Reasignar / Distribuir a</th>
                 <th style="width:70px;text-align:center;">Acciones</th>
@@ -571,12 +684,16 @@ const TeamView = (() => {
                 const p = item.project;
                 const rKey = item.roleKey;
                 const rName = item.roleName;
+                const statusInfo = DataStore.getStatusInfo(p.estado);
 
                 return `
                   <tr>
                     <td>
                       <div style="font-weight:600;color:var(--text-primary);">${p.nombre}</div>
                       <div style="font-size:0.7rem;color:var(--text-tertiary);">${p.areaSolicitante || '—'}</div>
+                    </td>
+                    <td>
+                      <span class="badge badge-status ${statusInfo.badgeClass}" style="font-size:0.72rem;padding:2px 8px;">${statusInfo.label}</span>
                     </td>
                     <td>
                       <span class="badge" style="background:rgba(99,102,241,0.1);color:var(--primary-400);">${rName}</span>
@@ -653,6 +770,10 @@ const TeamView = (() => {
                 <option value="liderTecnico">Líder Técnico</option>
                 <option value="scrumMaster">Scrum Master</option>
                 <option value="productOwner">Product Owner</option>
+                <option value="analistaFuncional">Analista Funcional</option>
+                <option value="qaTester">QA / Tester</option>
+                <option value="dba">DBA</option>
+                <option value="uxuiDesigner">UX/UI Designer</option>
               </select>
             </div>
             <button class="btn btn-primary" style="height:38px;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 16px;" onclick="TeamView.assignProject('${memberId}', document.getElementById('assign-project-id').value, document.getElementById('assign-project-role').value)">
@@ -703,10 +824,11 @@ const TeamView = (() => {
     const project = DataStore.getProjectById(projectId);
     if (!project) return;
 
-    if (roleKey === 'desarrollador') {
+    const leadershipKeys = ['pm', 'liderTecnico', 'scrumMaster', 'productOwner'];
+    if (!leadershipKeys.includes(roleKey)) {
       const devs = project.desarrolladores || [];
       if (devs.includes(memberId)) {
-        App.showToast('El integrante ya está asignado como desarrollador en este proyecto', 'warning');
+        App.showToast('El integrante ya está asignado a este proyecto', 'warning');
         return;
       }
       const updatedDevs = [...devs, memberId];
@@ -737,7 +859,8 @@ const TeamView = (() => {
     const project = DataStore.getProjectById(projectId);
     if (!project) return;
 
-    if (roleKey === 'desarrollador') {
+    const leadershipKeys = ['pm', 'liderTecnico', 'scrumMaster', 'productOwner'];
+    if (!leadershipKeys.includes(roleKey)) {
       const devs = (project.desarrolladores || []).filter(id => id !== memberId);
       DataStore.updateProject(projectId, { desarrolladores: devs });
     } else {
@@ -763,7 +886,8 @@ const TeamView = (() => {
     const targetMember = DataStore.getTeamMemberById(targetMemberId);
     const targetName = targetMember ? `${targetMember.nombre} ${targetMember.apellido}` : 'otro integrante';
 
-    if (roleKey === 'desarrollador') {
+    const leadershipKeys = ['pm', 'liderTecnico', 'scrumMaster', 'productOwner'];
+    if (!leadershipKeys.includes(roleKey)) {
       // Remove current from desarrolladores
       const devs = (project.desarrolladores || []).filter(id => id !== memberId);
       // Add target if not exists

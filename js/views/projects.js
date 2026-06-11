@@ -7,6 +7,8 @@ const ProjectsView = (() => {
   let searchQuery = '';
   let sortField = 'updatedAt';
   let sortDir = 'desc';
+  let editingMinutaId = null;
+  let _pendingMinutaFile = undefined; // undefined = no change, null = cleared, object = new file
 
   // Priority weight for proper sort order
   const PRIO_WEIGHT = { critica: 0, alta: 1, media: 2, baja: 3 };
@@ -50,9 +52,16 @@ const ProjectsView = (() => {
       <!-- Filters -->
       <div class="filter-chips mb-4" id="project-filters">
         <button class="filter-chip ${currentFilter === 'todos' ? 'active' : ''}" onclick="ProjectsView.setFilter('todos')">Todos</button>
-        ${DataStore.STATUSES.map(s => `
+        ${DataStore.STATUSES.filter(s => s.id !== 'archivado').map(s => `
           <button class="filter-chip ${currentFilter === s.id ? 'active' : ''}" onclick="ProjectsView.setFilter('${s.id}')">${s.label}</button>
         `).join('')}
+        <span style="width:1px;background:var(--border-subtle);margin:0 6px;align-self:stretch;display:inline-block;"></span>
+        <button class="filter-chip ${currentFilter === 'archivado' ? 'active' : ''}" onclick="ProjectsView.setFilter('archivado')" style="opacity:0.7; ${currentFilter === 'archivado' ? '' : 'border-style:dashed;'}">
+          <i data-lucide="archive" style="width:12px;height:12px;margin-right:4px;vertical-align:middle;pointer-events:none;"></i>Archivados
+          <span style="margin-left:4px;background:rgba(148,163,184,0.15);border-radius:10px;padding:0 6px;font-size:0.7rem;">
+            ${DataStore.getProjects().filter(p => p.estado === 'archivado').length}
+          </span>
+        </button>
       </div>
 
       <!-- Table -->
@@ -80,7 +89,7 @@ const ProjectsView = (() => {
                 <th onclick="ProjectsView.setSort('porcentajeAvance')">Avance ${sortIcon('porcentajeAvance')}</th>
                 <th onclick="ProjectsView.setSort('dificultad')">Dificultad ${sortIcon('dificultad')}</th>
                 <th>Responsable</th>
-                <th onclick="ProjectsView.setSort('fechaEstimadaFin')">Entrega Est. ${sortIcon('fechaEstimadaFin')}</th>
+                <th onclick="ProjectsView.setSort('fechaEstimadaFin')">Entrega (Est/Real) ${sortIcon('fechaEstimadaFin')}</th>
                 <th style="width:80px;">Acciones</th>
               </tr>
             </thead>
@@ -165,6 +174,11 @@ const ProjectsView = (() => {
 
   function getFilteredProjects() {
     let projects = DataStore.getProjects();
+
+    // Exclude archived from all views EXCEPT when explicitly filtering by 'archivado'
+    if (currentFilter !== 'archivado') {
+      projects = projects.filter(p => p.estado !== 'archivado');
+    }
 
     // Filter by status
     if (currentFilter !== 'todos') {
@@ -285,13 +299,23 @@ const ProjectsView = (() => {
             <span style="font-size:0.68rem; color:var(--text-tertiary); margin-left:4px;">${diffInfo.label}</span>
           </td>
           <td style="font-size:0.78rem;">${responsible}</td>
-          <td style="font-size:0.78rem;">${formatDate(p.fechaEstimadaFin)}</td>
+          <td style="font-size:0.78rem;">
+            ${p.estado === 'produccion' 
+              ? (p.fechaRealFin ? `<span style="color:var(--status-green); font-weight:600;" title="Fin Real">✓ ${formatDate(p.fechaRealFin)}</span>` : '<span style="color:var(--text-tertiary);">Sin fecha real</span>')
+              : formatDate(p.fechaEstimadaFin)
+            }
+          </td>
           <td>
             <div class="flex gap-2">
-              <button class="btn btn-ghost btn-icon sm" title="Editar" onclick="ProjectsView.openForm('${p.id}')">
+              ${p.estado !== 'archivado' ? `
+              <button class="btn btn-ghost btn-icon sm" title="Archivar proyecto" onclick="event.stopPropagation(); event.preventDefault(); ProjectsView.archiveProject('${p.id}'); return false;" style="color:var(--text-tertiary); cursor:pointer; position:relative; z-index:2;">
+                <i data-lucide="archive" style="width:14px;height:14px; pointer-events:none;"></i>
+              </button>
+              ` : '<span class="badge badge-status badge-archivado" style="font-size:0.7rem;">Archivado</span>'}
+              <button class="btn btn-ghost btn-icon sm" title="Editar" onclick="event.stopPropagation(); ProjectsView.openForm('${p.id}')">
                 <i data-lucide="pencil" style="width:14px;height:14px;"></i>
               </button>
-              <button class="btn btn-ghost btn-icon sm" title="Eliminar" onclick="ProjectsView.openDelete('${p.id}')" style="color:var(--status-red);">
+              <button class="btn btn-ghost btn-icon sm" title="Eliminar" onclick="event.stopPropagation(); ProjectsView.openDelete('${p.id}')" style="color:var(--status-red);">
                 <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
               </button>
             </div>
@@ -585,7 +609,7 @@ const ProjectsView = (() => {
         </div>
 
         <div class="form-group">
-          <label class="form-label">Desarrolladores Asignados</label>
+          <label class="form-label">Otros Integrantes Asignados</label>
           <div style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--border-radius-md);padding:10px 14px;max-height:160px;overflow-y:auto;">
             ${devCheckboxes || '<span style="font-size:0.78rem;color:var(--text-tertiary);">No hay miembros del equipo registrados</span>'}
           </div>
@@ -735,9 +759,32 @@ const ProjectsView = (() => {
     if (deletingProjectId) {
       DataStore.deleteProject(deletingProjectId);
       App.showToast('Proyecto eliminado', 'success');
+      App.updateSidebarCounts();
       closeDelete();
       render();
-      App.updateSidebarCounts();
+    }
+  }
+
+  function archiveProject(projectId) {
+    try {
+      if (!projectId) {
+        console.error('archiveProject: No projectId provided');
+        return;
+      }
+      const confirmed = confirm('¿Estás seguro de archivar este proyecto? Dejará de aparecer en el Kanban y en la vista general.');
+      if (confirmed) {
+        const result = DataStore.updateProject(projectId, { estado: 'archivado' });
+        if (result) {
+          App.showToast('Proyecto archivado correctamente', 'success');
+          App.updateSidebarCounts();
+          render();
+        } else {
+          App.showToast('Error: No se pudo archivar el proyecto', 'error');
+        }
+      }
+    } catch (err) {
+      console.error('Error en archiveProject:', err);
+      alert('Error al archivar: ' + err.message);
     }
   }
 
@@ -750,9 +797,38 @@ const ProjectsView = (() => {
     const prioInfo = DataStore.getPriorityInfo(p.prioridad);
     const diffInfo = DataStore.getDifficultyInfo(p.dificultad);
 
-    const devNames = (p.desarrolladores || [])
-      .map(id => DataStore.getTeamMemberName(id))
-      .filter(n => n !== '—');
+    const groupedOthers = {};
+    (p.desarrolladores || []).forEach(id => {
+      const m = DataStore.getTeamMemberById(id);
+      if (m) {
+        const role = m.rol || 'Desarrollador';
+        if (!groupedOthers[role]) {
+          groupedOthers[role] = [];
+        }
+        groupedOthers[role].push(DataStore.getTeamMemberName(id));
+      }
+    });
+
+    let othersHTML = '';
+    const roleOrder = ['Analista Funcional', 'Desarrollador', 'QA / Tester', 'DBA', 'UX/UI Designer'];
+    const presentRoles = Object.keys(groupedOthers);
+    presentRoles.sort((a, b) => {
+      const idxA = roleOrder.indexOf(a);
+      const idxB = roleOrder.indexOf(b);
+      const valA = idxA !== -1 ? idxA : 999;
+      const valB = idxB !== -1 ? idxB : 999;
+      return valA - valB;
+    });
+
+    presentRoles.forEach(role => {
+      const names = groupedOthers[role];
+      const roleLabel = role === 'Desarrollador' ? 'Desarrolladores' : role;
+      othersHTML += `<div><strong>${roleLabel}:</strong> ${names.join(', ')}</div>`;
+    });
+
+    if (othersHTML === '') {
+      othersHTML = `<div><strong>Otros Integrantes:</strong> —</div>`;
+    }
 
     document.getElementById('detail-modal-title').textContent = p.nombre;
     document.getElementById('detail-modal-body').innerHTML = `
@@ -789,7 +865,7 @@ const ProjectsView = (() => {
             <div><strong>Líder Técnico:</strong> ${DataStore.getTeamMemberName(p.liderTecnico)}</div>
             <div><strong>Scrum Master:</strong> ${DataStore.getTeamMemberName(p.scrumMaster)}</div>
             <div><strong>Product Owner:</strong> ${DataStore.getTeamMemberName(p.productOwner)}</div>
-            <div><strong>Desarrolladores:</strong> ${devNames.length > 0 ? devNames.join(', ') : '—'}</div>
+            ${othersHTML}
           </div>
 
           <h4 style="font-size:0.75rem;color:var(--text-tertiary);text-transform:uppercase;margin:16px 0 8px;">Fechas</h4>
@@ -815,7 +891,7 @@ const ProjectsView = (() => {
       <div style="margin-top:28px;border-top:1px solid var(--border-subtle);padding-top:20px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <h4 style="font-size:0.75rem;color:var(--text-tertiary);text-transform:uppercase;display:flex;align-items:center;gap:6px;">
-            <i data-lucide="file-text" style="width:14px;height:14px;color:var(--primary-400);"></i> Minutas y Documentos
+            <i data-lucide="file-text" style="width:14px;height:14px;color:var(--primary-400);"></i> Minutas, Informes o documentos .PDF
             <span style="background:var(--bg-input);padding:1px 7px;border-radius:10px;font-size:0.68rem;color:var(--text-tertiary);">${(p.minutas || []).length}</span>
           </h4>
           <button onclick="ProjectsView.toggleMinutaForm('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:0.72rem;padding:4px 10px;">
@@ -828,7 +904,7 @@ const ProjectsView = (() => {
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
             <div>
               <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Título <span style="color:var(--status-red);">*</span></label>
-              <input type="text" class="form-input" id="minuta-titulo" placeholder="Ej: Reunión de kick-off" style="font-size:0.8rem;">
+              <input type="text" class="form-input" id="minuta-titulo" placeholder="Ej: Minuta, informe o documento" style="font-size:0.8rem;">
             </div>
             <div>
               <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Fecha</label>
@@ -838,10 +914,11 @@ const ProjectsView = (() => {
           <div style="margin-bottom:10px;">
             <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Archivo PDF (opcional, máx 8 MB)</label>
             <input type="file" id="minuta-archivo" accept="application/pdf" style="font-size:0.78rem;color:var(--text-secondary);">
+            <div id="minuta-file-status"></div>
           </div>
           <div style="display:flex;gap:8px;justify-content:flex-end;">
             <button onclick="ProjectsView.toggleMinutaForm()" class="btn btn-ghost btn-sm" style="font-size:0.72rem;">Cancelar</button>
-            <button onclick="ProjectsView.saveMinuta('${p.id}')" class="btn btn-primary btn-sm" style="font-size:0.72rem;">
+            <button id="btn-save-minuta" onclick="ProjectsView.saveMinuta('${p.id}')" class="btn btn-primary btn-sm" style="font-size:0.72rem;">
               <i data-lucide="save" style="width:12px;height:12px;"></i> Guardar Minuta
             </button>
           </div>
@@ -861,6 +938,7 @@ const ProjectsView = (() => {
                 <div style="font-size:0.68rem;color:var(--text-tertiary);">${formatDate(m.fecha)}${m.archivo ? ` · ${m.archivo.nombre}` : ''}</div>
               </div>
               <div style="display:flex;gap:4px;flex-shrink:0;">
+                <button onclick="ProjectsView.editMinuta('${p.id}','${m.id}')" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:5px;padding:3px 8px;color:var(--primary-400);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Editar"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Editar</button>
                 ${m.archivo ? `
                   <button onclick="ProjectsView.openMinutaPdf('${p.id}','${m.id}')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);border-radius:5px;padding:3px 8px;color:var(--primary-400);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Ver PDF"><i data-lucide="eye" style="width:11px;height:11px;"></i> Ver</button>
                 ` : ''}
@@ -875,7 +953,7 @@ const ProjectsView = (() => {
       <div style="margin-top:24px;border-top:1px solid var(--border-subtle);padding-top:20px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <h4 style="font-size:0.75rem;color:var(--text-tertiary);text-transform:uppercase;display:flex;align-items:center;gap:6px;">
-            <i data-lucide="bug" style="width:14px;height:14px;color:#f59e0b;"></i> Tickets Mantis / Novedades
+            <i data-lucide="bug" style="width:14px;height:14px;color:#f59e0b;"></i> Mantis
             <span style="background:var(--bg-input);padding:1px 7px;border-radius:10px;font-size:0.68rem;color:var(--text-tertiary);">${(p.ticketsMantis || []).length}</span>
           </h4>
           <button onclick="ProjectsView.toggleTicketForm('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:0.72rem;padding:4px 10px;">
@@ -918,11 +996,69 @@ const ProjectsView = (() => {
               </div>
               <div style="flex:1;min-width:0;">
                 <div style="font-size:0.8rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.descripcion}</div>
-                <div style="font-size:0.68rem;color:var(--text-tertiary);">${formatDate(t.fecha)}${t.url ? ` · <a href="${t.url}" target="_blank" style="color:var(--primary-400);">Abrir ticket ↗</a>` : ''}</div>
+                <div style="font-size:0.68rem;color:var(--text-tertiary);">${formatDate(t.fecha)}${t.url ? ` · <a href="${t.url}" target="_blank" style="color:var(--primary-400);">Mantis ↗</a>` : ''}</div>
               </div>
               <div style="display:flex;gap:4px;flex-shrink:0;">
-                ${t.url ? `<a href="${t.url}" target="_blank" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:5px;padding:3px 8px;color:#f59e0b;font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;text-decoration:none;" title="Abrir en Mantis"><i data-lucide="external-link" style="width:11px;height:11px;"></i> Ir</a>` : ''}
+                ${t.url ? `<a href="${t.url}" target="_blank" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:5px;padding:3px 8px;color:#f59e0b;font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;text-decoration:none;" title="Abrir en Mantis"><i data-lucide="external-link" style="width:11px;height:11px;"></i> Mantis</a>` : ''}
                 <button onclick="ProjectsView.deleteTicket('${p.id}','${t.id}')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:5px;padding:3px 8px;color:var(--status-red);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Eliminar"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Taiga Section -->
+      <div style="margin-top:24px;border-top:1px solid var(--border-subtle);padding-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h4 style="font-size:0.75rem;color:var(--text-tertiary);text-transform:uppercase;display:flex;align-items:center;gap:6px;">
+            <i data-lucide="layout" style="width:14px;height:14px;color:#14b8a6;"></i> Taiga
+            <span style="background:var(--bg-input);padding:1px 7px;border-radius:10px;font-size:0.68rem;color:var(--text-tertiary);">${(p.ticketsTaiga || []).length}</span>
+          </h4>
+          <button onclick="ProjectsView.toggleTaigaForm('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:0.72rem;padding:4px 10px;">
+            <i data-lucide="plus" style="width:12px;height:12px;"></i> Agregar
+          </button>
+        </div>
+
+        <!-- Add Taiga Form (hidden by default) -->
+        <div id="add-taiga-form" style="display:none;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--border-radius-md);padding:14px;margin-bottom:12px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+              <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">URL de Taiga</label>
+              <input type="url" class="form-input" id="taiga-url" placeholder="https://tree.taiga.io/project/..." style="font-size:0.8rem;">
+            </div>
+            <div>
+              <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Fecha</label>
+              <input type="date" class="form-input" id="taiga-fecha" value="${new Date().toISOString().split('T')[0]}" style="font-size:0.8rem;">
+            </div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Descripción breve <span style="color:var(--status-red);">*</span></label>
+            <input type="text" class="form-input" id="taiga-descripcion" placeholder="Ej: User Story, Epic o enlace al proyecto" style="font-size:0.8rem;">
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onclick="ProjectsView.toggleTaigaForm()" class="btn btn-ghost btn-sm" style="font-size:0.72rem;">Cancelar</button>
+            <button onclick="ProjectsView.saveTaiga('${p.id}')" class="btn btn-primary btn-sm" style="font-size:0.72rem;">
+              <i data-lucide="save" style="width:12px;height:12px;"></i> Guardar Enlace
+            </button>
+          </div>
+        </div>
+
+        <!-- Taiga List -->
+        <div id="taiga-list">
+          ${(p.ticketsTaiga || []).length === 0 ? `
+            <div style="text-align:center;padding:16px;color:var(--text-tertiary);font-size:0.78rem;">Sin enlaces de Taiga cargados</div>
+          ` : (p.ticketsTaiga || []).sort((a, b) => b.fecha.localeCompare(a.fecha)).map(t => `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,184,166,0.04);border:1px solid var(--border-subtle);border-radius:8px;margin-bottom:6px;">
+              <div style="flex-shrink:0;width:32px;height:32px;background:rgba(20,184,166,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                <i data-lucide="layout" style="width:16px;height:16px;color:#14b8a6;"></i>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:0.8rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.descripcion}</div>
+                <div style="font-size:0.68rem;color:var(--text-tertiary);">${formatDate(t.fecha)}${t.url ? ` · <a href="${t.url}" target="_blank" style="color:#14b8a6;">Taiga ↗</a>` : ''}</div>
+              </div>
+              <div style="display:flex;gap:4px;flex-shrink:0;">
+                ${t.url ? `<a href="${t.url}" target="_blank" style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.25);border-radius:5px;padding:3px 8px;color:#14b8a6;font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;text-decoration:none;" title="Abrir en Taiga"><i data-lucide="external-link" style="width:11px;height:11px;"></i> Taiga</a>` : ''}
+                <button onclick="ProjectsView.deleteTaiga('${p.id}','${t.id}')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:5px;padding:3px 8px;color:var(--status-red);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Eliminar"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>
               </div>
             </div>
           `).join('')}
@@ -1012,10 +1148,104 @@ const ProjectsView = (() => {
     setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
   }
   /* ── Minutas ── */
-  function toggleMinutaForm() {
+  function toggleMinutaForm(projectId) {
     const form = document.getElementById('add-minuta-form');
     if (!form) return;
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    
+    const isOpening = form.style.display === 'none';
+    form.style.display = isOpening ? 'block' : 'none';
+    
+    if (isOpening) {
+      editingMinutaId = null;
+      _pendingMinutaFile = undefined;
+      
+      const tituloInput = document.getElementById('minuta-titulo');
+      const fechaInput = document.getElementById('minuta-fecha');
+      const fileInput = document.getElementById('minuta-archivo');
+      const fileStatus = document.getElementById('minuta-file-status');
+      const saveBtn = document.getElementById('btn-save-minuta');
+      
+      if (tituloInput) tituloInput.value = '';
+      if (fechaInput) fechaInput.value = new Date().toISOString().split('T')[0];
+      if (fileInput) fileInput.value = '';
+      if (fileStatus) fileStatus.innerHTML = '';
+      if (saveBtn) saveBtn.innerHTML = '<i data-lucide="save" style="width:12px;height:12px;"></i> Guardar Minuta';
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  function editMinuta(projectId, minutaId) {
+    const p = DataStore.getProjectById(projectId);
+    if (!p || !p.minutas) return;
+    const m = p.minutas.find(x => x.id === minutaId);
+    if (!m) return;
+    
+    editingMinutaId = minutaId;
+    _pendingMinutaFile = undefined;
+    
+    const form = document.getElementById('add-minuta-form');
+    if (form) form.style.display = 'block';
+    
+    const tituloInput = document.getElementById('minuta-titulo');
+    const fechaInput = document.getElementById('minuta-fecha');
+    const fileInput = document.getElementById('minuta-archivo');
+    const fileStatus = document.getElementById('minuta-file-status');
+    const saveBtn = document.getElementById('btn-save-minuta');
+    
+    if (tituloInput) tituloInput.value = m.titulo;
+    if (fechaInput) fechaInput.value = m.fecha;
+    if (fileInput) fileInput.value = '';
+    
+    if (fileStatus) {
+      if (m.archivo) {
+        fileStatus.innerHTML = `
+          <div style="margin-top:6px;font-size:0.75rem;color:var(--primary-400);display:flex;align-items:center;gap:6px;">
+            <span>📎 Archivo actual: <strong>${m.archivo.nombre}</strong></span>
+            <button type="button" onclick="ProjectsView.clearMinutaFile()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:4px;color:var(--status-red);cursor:pointer;font-size:0.72rem;padding:1px 6px;">✕ Quitar</button>
+          </div>
+        `;
+      } else {
+        fileStatus.innerHTML = '<div style="margin-top:6px;font-size:0.75rem;color:var(--text-tertiary);">Sin archivo adjunto</div>';
+      }
+    }
+    
+    if (saveBtn) {
+      saveBtn.innerHTML = '<i data-lucide="save" style="width:12px;height:12px;"></i> Actualizar';
+    }
+    if (window.lucide) lucide.createIcons();
+    
+    if (form) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function clearMinutaFile() {
+    _pendingMinutaFile = null;
+    const fileStatus = document.getElementById('minuta-file-status');
+    if (fileStatus) {
+      fileStatus.innerHTML = `
+        <div style="margin-top:6px;font-size:0.75rem;color:var(--status-red);display:flex;align-items:center;gap:6px;">
+          <span>⚠️ El archivo será eliminado al guardar</span>
+          <button type="button" onclick="ProjectsView.restoreMinutaFile()" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:4px;color:var(--primary-400);cursor:pointer;font-size:0.72rem;padding:1px 6px;">Deshacer</button>
+        </div>
+      `;
+    }
+  }
+
+  function restoreMinutaFile() {
+    _pendingMinutaFile = undefined;
+    const project = DataStore.getProjects().find(p => p.minutas && p.minutas.some(m => m.id === editingMinutaId));
+    if (!project) return;
+    const m = project.minutas.find(x => x.id === editingMinutaId);
+    if (!m || !m.archivo) return;
+    
+    const fileStatus = document.getElementById('minuta-file-status');
+    if (fileStatus) {
+      fileStatus.innerHTML = `
+        <div style="margin-top:6px;font-size:0.75rem;color:var(--primary-400);display:flex;align-items:center;gap:6px;">
+          <span>📎 Archivo actual: <strong>${m.archivo.nombre}</strong></span>
+          <button type="button" onclick="ProjectsView.clearMinutaFile()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:4px;color:var(--status-red);cursor:pointer;font-size:0.72rem;padding:1px 6px;">✕ Quitar</button>
+        </div>
+      `;
+    }
   }
 
   function saveMinuta(projectId) {
@@ -1029,6 +1259,13 @@ const ProjectsView = (() => {
     }
     
     const file = fileInput.files[0];
+    
+    const onSaved = () => {
+      editingMinutaId = null;
+      _pendingMinutaFile = undefined;
+      showDetail(projectId);
+    };
+
     if (file) {
       if (file.size > 8 * 1024 * 1024) {
         App.showToast('El PDF no debe superar los 8 MB', 'error');
@@ -1037,15 +1274,26 @@ const ProjectsView = (() => {
       const reader = new FileReader();
       reader.onload = function(e) {
         const archivo = { nombre: file.name, data: e.target.result };
-        DataStore.addMinuta(projectId, { titulo, fecha, archivo });
-        App.showToast('Minuta guardada', 'success');
-        showDetail(projectId);
+        if (editingMinutaId) {
+          DataStore.updateMinuta(projectId, editingMinutaId, { titulo, fecha, archivo });
+          App.showToast('Documento actualizado', 'success');
+        } else {
+          DataStore.addMinuta(projectId, { titulo, fecha, archivo });
+          App.showToast('Documento guardado', 'success');
+        }
+        onSaved();
       };
       reader.readAsDataURL(file);
     } else {
-      DataStore.addMinuta(projectId, { titulo, fecha, archivo: null });
-      App.showToast('Minuta guardada', 'success');
-      showDetail(projectId);
+      if (editingMinutaId) {
+        const archivoVal = _pendingMinutaFile === null ? null : undefined;
+        DataStore.updateMinuta(projectId, editingMinutaId, { titulo, fecha, archivo: archivoVal });
+        App.showToast('Documento actualizado', 'success');
+      } else {
+        DataStore.addMinuta(projectId, { titulo, fecha, archivo: null });
+        App.showToast('Documento guardado', 'success');
+      }
+      onSaved();
     }
   }
 
@@ -1105,6 +1353,36 @@ const ProjectsView = (() => {
     }
   }
 
+  /* ── Taiga ── */
+  function toggleTaigaForm() {
+    const form = document.getElementById('add-taiga-form');
+    if (!form) return;
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function saveTaiga(projectId) {
+    const descripcion = document.getElementById('taiga-descripcion').value.trim();
+    const fecha = document.getElementById('taiga-fecha').value;
+    const url = document.getElementById('taiga-url').value.trim();
+    
+    if (!descripcion) {
+      App.showToast('La descripción es requerida', 'error');
+      return;
+    }
+    
+    DataStore.addTicketTaiga(projectId, { descripcion, fecha, url });
+    App.showToast('Enlace Taiga guardado', 'success');
+    showDetail(projectId);
+  }
+
+  function deleteTaiga(projectId, ticketId) {
+    if (confirm('¿Eliminar este enlace de Taiga?')) {
+      DataStore.removeTicketTaiga(projectId, ticketId);
+      App.showToast('Enlace Taiga eliminado', 'success');
+      showDetail(projectId);
+    }
+  }
+
   return {
     render,
     setFilter,
@@ -1120,6 +1398,7 @@ const ProjectsView = (() => {
     openDelete,
     closeDelete,
     confirmDelete,
+    archiveProject,
     showDetail,
     closeDetail,
     exportCSV,
@@ -1128,8 +1407,14 @@ const ProjectsView = (() => {
     saveMinuta,
     deleteMinuta,
     openMinutaPdf,
+    editMinuta,
+    clearMinutaFile,
+    restoreMinutaFile,
     toggleTicketForm,
     saveTicket,
-    deleteTicket
+    deleteTicket,
+    toggleTaigaForm,
+    saveTaiga,
+    deleteTaiga
   };
 })();

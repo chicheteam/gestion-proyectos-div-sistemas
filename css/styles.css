@@ -827,6 +827,12 @@ textarea {
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+.badge-archivado {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
 .badge-priority-alta {
   background: rgba(249, 115, 22, 0.15);
   color: var(--priority-alta);
@@ -1195,6 +1201,49 @@ textarea {
   background: rgba(99, 102, 241, 0.05);
   border: 2px dashed var(--primary-500);
   border-radius: var(--border-radius-md);
+}
+
+/* Kanban Collapsed State */
+.kanban-column.kanban-column-collapsed {
+  min-width: 50px;
+  max-width: 50px;
+  background: rgba(17, 17, 39, 0.2);
+}
+
+.kanban-column.kanban-column-collapsed .kanban-column-header {
+  flex-direction: column;
+  padding: 16px 8px;
+  gap: 16px;
+  border-bottom: none;
+}
+
+.kanban-column.kanban-column-collapsed .kanban-column-title {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  margin-top: 10px;
+  gap: 12px;
+}
+
+.kanban-column.kanban-column-collapsed .kanban-column-body {
+  display: none;
+}
+
+.kanban-collapse-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.kanban-collapse-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-primary);
 }
 
 .kanban-card {

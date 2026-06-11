@@ -17,7 +17,10 @@ const App = (() => {
     // 1. Seed initial mock data if localStorage is empty
     DataStore.seedSampleData();
 
-    // 2. Setup Routing via Hash Change
+    // 2. Auto-archive old production projects
+    DataStore.autoArchiveOldProductionProjects();
+
+    // 3. Setup Routing via Hash Change
     window.addEventListener('hashchange', handleRouting);
     
     // 3. Initial Routing
@@ -117,7 +120,7 @@ const App = (() => {
   function updateSidebarCounts() {
     const badge = document.getElementById('badge-projects-count');
     if (badge) {
-      const activeProjects = DataStore.getProjects().filter(p => !['produccion', 'cancelado'].includes(p.estado));
+      const activeProjects = DataStore.getProjects().filter(p => !['produccion', 'cancelado', 'archivado'].includes(p.estado));
       badge.textContent = activeProjects.length;
     }
     // Refresh notification badge
@@ -185,7 +188,7 @@ const App = (() => {
             const name = card.querySelector('h3')?.textContent.toLowerCase() || '';
             const role = card.querySelector('.team-card-info span')?.textContent.toLowerCase() || '';
             if (name.includes(query) || role.includes(query)) {
-              card.style.display = 'flex';
+              card.style.display = '';
             } else {
               card.style.display = 'none';
             }

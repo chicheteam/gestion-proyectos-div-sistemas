@@ -152,16 +152,42 @@ const ReportsView = (() => {
   }
 
   /* ── Export JSON ── */
-  function exportJSON() {
-    const data = DataStore.exportData();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `backup_div_sistemas_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    App.showToast('Backup JSON descargado correctamente', 'success');
+  async function exportJSON() {
+    try {
+      const data = DataStore.exportData();
+      const jsonString = JSON.stringify(data, null, 2);
+      const filename = `backup_div_sistemas_${new Date().toISOString().split('T')[0]}.json`;
+
+      if (window.showSaveFilePicker) {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{
+            description: 'Archivo JSON',
+            accept: { 'application/json': ['.json'] },
+          }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(jsonString);
+        await writable.close();
+        App.showToast('Backup JSON guardado correctamente', 'success');
+      } else {
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        App.showToast('Backup JSON descargado correctamente', 'success');
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('Error al exportar JSON:', err);
+        App.showToast('Error al guardar el backup', 'error');
+      }
+    }
   }
 
   /* ── Import JSON ── */
