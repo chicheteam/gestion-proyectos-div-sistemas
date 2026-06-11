@@ -27,9 +27,10 @@ const DashboardView = (() => {
     const criticalProjects = activeProjects.filter(p => p.prioridad === 'critica' || p.prioridad === 'alta');
     const totalEffort = activeProjects.reduce((sum, p) => sum + (p.dificultad || 0), 0);
     
+    const allCompletedProjects = allProjects.filter(p => p.estado === 'produccion' || p.estado === 'archivado');
     let leadTimeDays = 0;
     let completedWithDates = 0;
-    completedProjects.forEach(p => {
+    allCompletedProjects.forEach(p => {
       if (p.fechaSolicitud && p.fechaRealFin) {
         const start = new Date(p.fechaSolicitud);
         const end = new Date(p.fechaRealFin);
