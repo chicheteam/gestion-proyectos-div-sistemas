@@ -398,12 +398,12 @@ const DataStore = (() => {
     return result;
   }
 
-  function getTeamWorkload() {
+  function getTeamWorkload(includeInactive = false) {
     const team = getTeam();
     const projects = getProjects();
     const activeStatuses = ['analisis', 'desarrollo', 'testing'];
 
-    return team.filter(m => m.activo).map(member => {
+    return team.filter(m => includeInactive || m.activo).map(member => {
       const fullName = member.jerarquia ? `${member.jerarquia} ${member.nombre} ${member.apellido}` : `${member.nombre} ${member.apellido}`;
       const assignedProjects = projects.filter(p =>
         activeStatuses.includes(p.estado) && (
@@ -491,7 +491,7 @@ const DataStore = (() => {
       months[key] = { label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`, created: 0, completed: 0, desarrollo: 0 };
     }
 
-    projects.filter(p => p.estado !== 'archivado').forEach(p => {
+    projects.forEach(p => {
       // Use fechaSolicitud (real request date) instead of createdAt (migration timestamp)
       const createdKey = (p.fechaSolicitud || p.createdAt || '').substring(0, 7);
       const completedKey = p.fechaRealFin ? p.fechaRealFin.substring(0, 7) : null;
@@ -514,7 +514,7 @@ const DataStore = (() => {
           if (endMonth <= monthKey) return;
         } else {
           // If it is completed or cancelled but has no real end date, check estimated finish date or state
-          if (['produccion', 'cancelado'].includes(p.estado)) {
+          if (['produccion', 'cancelado', 'archivado'].includes(p.estado)) {
             const estFin = p.fechaEstimadaFin;
             if (estFin) {
               const estFinMonth = estFin.substring(0, 7);

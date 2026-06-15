@@ -463,7 +463,7 @@ const DashboardView = (() => {
           if (endMonth <= monthKey) return false;
         } else {
           // If it is completed or cancelled but has no real end date, check estimated finish date or state
-          if (['produccion', 'cancelado'].includes(p.estado)) {
+          if (['produccion', 'cancelado', 'archivado'].includes(p.estado)) {
             const estFin = p.fechaEstimadaFin;
             if (estFin) {
               const estFinMonth = estFin.substring(0, 7);

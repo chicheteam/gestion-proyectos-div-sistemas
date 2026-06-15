@@ -259,7 +259,9 @@ const TeamView = (() => {
             <span>${w.member.rol}${w.member.destino ? ` — ${w.member.destino}` : ''}</span>
           </div>
           ${w.member.isExterno ? `
-            <div class="team-card-status available" style="background:var(--primary-500);color:white;font-size:0.6rem;padding:2px 6px;">EXTERNO</div>
+            <div class="team-card-status available" style="background:${w.member.activo !== false ? 'var(--primary-500)' : 'var(--status-gray)'};color:white;font-size:0.6rem;padding:2px 6px;">
+              ${w.member.activo !== false ? 'EXTERNO' : 'EXTERNO (INACTIVO)'}
+            </div>
           ` : `
             <div class="team-card-status ${w.loadClass}">
               ${w.loadLabel}
@@ -322,7 +324,7 @@ const TeamView = (() => {
 
   function renderExternals() {
     const teamContent = document.getElementById('team-content');
-    const workload = DataStore.getTeamWorkload().filter(w => w.member.isExterno);
+    const workload = DataStore.getTeamWorkload(true).filter(w => w.member.isExterno);
 
     if (workload.length === 0) {
       teamContent.innerHTML = `
@@ -339,7 +341,7 @@ const TeamView = (() => {
     }
 
     teamContent.innerHTML = `
-      <div class="workload-grid" style="margin-top:20px;">
+      <div class="team-grid" style="margin-top:20px;">
         ${workload.map(w => renderWorkloadCard(w)).join('')}
       </div>
     `;

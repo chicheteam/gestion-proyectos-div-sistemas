@@ -797,37 +797,82 @@ const ProjectsView = (() => {
     const prioInfo = DataStore.getPriorityInfo(p.prioridad);
     const diffInfo = DataStore.getDifficultyInfo(p.dificultad);
 
-    const groupedOthers = {};
+    let internalHTML = '';
+    let externalHTML = '';
+
+    const fixedRoles = [
+      { key: 'pm', label: 'PM' },
+      { key: 'liderTecnico', label: 'Líder Técnico' },
+      { key: 'scrumMaster', label: 'Scrum Master' },
+      { key: 'productOwner', label: 'Product Owner' }
+    ];
+
+    fixedRoles.forEach(r => {
+      const id = p[r.key];
+      let added = false;
+      if (id) {
+        const m = DataStore.getTeamMemberById(id);
+        if (m) {
+          const nameHtml = `<div><strong>${r.label}:</strong> ${DataStore.getTeamMemberName(id)}</div>`;
+          if (m.isExterno) {
+            externalHTML += nameHtml;
+          } else {
+            internalHTML += nameHtml;
+          }
+          added = true;
+        }
+      }
+      if (!added) {
+        internalHTML += `<div><strong>${r.label}:</strong> —</div>`;
+      }
+    });
+
+    const groupedInternalOthers = {};
+    const groupedExternalOthers = {};
+
     (p.desarrolladores || []).forEach(id => {
       const m = DataStore.getTeamMemberById(id);
       if (m) {
         const role = m.rol || 'Desarrollador';
-        if (!groupedOthers[role]) {
-          groupedOthers[role] = [];
+        const name = DataStore.getTeamMemberName(id);
+        if (m.isExterno) {
+          if (!groupedExternalOthers[role]) groupedExternalOthers[role] = [];
+          groupedExternalOthers[role].push(name);
+        } else {
+          if (!groupedInternalOthers[role]) groupedInternalOthers[role] = [];
+          groupedInternalOthers[role].push(name);
         }
-        groupedOthers[role].push(DataStore.getTeamMemberName(id));
       }
     });
 
-    let othersHTML = '';
     const roleOrder = ['Analista Funcional', 'Desarrollador', 'QA / Tester', 'DBA', 'UX/UI Designer'];
-    const presentRoles = Object.keys(groupedOthers);
-    presentRoles.sort((a, b) => {
-      const idxA = roleOrder.indexOf(a);
-      const idxB = roleOrder.indexOf(b);
-      const valA = idxA !== -1 ? idxA : 999;
-      const valB = idxB !== -1 ? idxB : 999;
-      return valA - valB;
-    });
 
-    presentRoles.forEach(role => {
-      const names = groupedOthers[role];
-      const roleLabel = role === 'Desarrollador' ? 'Desarrolladores' : role;
-      othersHTML += `<div><strong>${roleLabel}:</strong> ${names.join(', ')}</div>`;
-    });
+    const appendOthers = (grouped, destHtml) => {
+      let html = destHtml;
+      const presentRoles = Object.keys(grouped).sort((a, b) => {
+        const idxA = roleOrder.indexOf(a);
+        const idxB = roleOrder.indexOf(b);
+        return (idxA !== -1 ? idxA : 999) - (idxB !== -1 ? idxB : 999);
+      });
+      presentRoles.forEach(role => {
+        const names = grouped[role];
+        const roleLabel = role === 'Desarrollador' ? 'Desarrolladores' : role;
+        html += `<div><strong>${roleLabel}:</strong> ${names.join(', ')}</div>`;
+      });
+      return html;
+    };
 
-    if (othersHTML === '') {
-      othersHTML = `<div><strong>Otros Integrantes:</strong> —</div>`;
+    internalHTML = appendOthers(groupedInternalOthers, internalHTML);
+    externalHTML = appendOthers(groupedExternalOthers, externalHTML);
+
+    let externalSection = '';
+    if (externalHTML !== '') {
+      externalSection = `
+        <h4 style="font-size:0.75rem;color:var(--text-tertiary);text-transform:uppercase;margin:16px 0 8px;">Miembros Externos</h4>
+        <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.8;">
+          ${externalHTML}
+        </div>
+      `;
     }
 
     document.getElementById('detail-modal-title').textContent = p.nombre;
@@ -861,12 +906,9 @@ const ProjectsView = (() => {
         <div>
           <h4 style="font-size:0.75rem;color:var(--text-tertiary);text-transform:uppercase;margin-bottom:8px;">Equipo Asignado</h4>
           <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.8;">
-            <div><strong>PM:</strong> ${DataStore.getTeamMemberName(p.pm)}</div>
-            <div><strong>Líder Técnico:</strong> ${DataStore.getTeamMemberName(p.liderTecnico)}</div>
-            <div><strong>Scrum Master:</strong> ${DataStore.getTeamMemberName(p.scrumMaster)}</div>
-            <div><strong>Product Owner:</strong> ${DataStore.getTeamMemberName(p.productOwner)}</div>
-            ${othersHTML}
+            ${internalHTML}
           </div>
+          ${externalSection}
 
           <h4 style="font-size:0.75rem;color:var(--text-tertiary);text-transform:uppercase;margin:16px 0 8px;">Fechas</h4>
           <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.8;">
