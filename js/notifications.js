@@ -19,15 +19,11 @@ const NotificationsEngine = (() => {
   }
 
   function getSettings() {
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      if (raw) return { ...getDefaultSettings(), ...JSON.parse(raw) };
-    } catch (e) { /* ignore */ }
-    return getDefaultSettings();
+    return DataStore.getSettings();
   }
 
   function saveSettings(settings) {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    DataStore.saveSettings(settings);
   }
 
   /* ── Alert Generation ── */

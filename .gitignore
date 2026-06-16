@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+*.log
+backend/.env
+logs.txt
+logs2.txt

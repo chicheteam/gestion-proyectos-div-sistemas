@@ -1309,33 +1309,45 @@ const ProjectsView = (() => {
     };
 
     if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        App.showToast('El PDF no debe superar los 8 MB', 'error');
+      if (file.size > 2 * 1024 * 1024) {
+        App.showToast('El PDF no debe superar los 2 MB por límites del navegador', 'error');
         return;
       }
       const reader = new FileReader();
       reader.onload = function(e) {
         const archivo = { nombre: file.name, data: e.target.result };
+        let result = null;
         if (editingMinutaId) {
-          DataStore.updateMinuta(projectId, editingMinutaId, { titulo, fecha, archivo });
-          App.showToast('Documento actualizado', 'success');
+          result = DataStore.updateMinuta(projectId, editingMinutaId, { titulo, fecha, archivo });
+          if (result) App.showToast('Documento actualizado', 'success');
         } else {
-          DataStore.addMinuta(projectId, { titulo, fecha, archivo });
-          App.showToast('Documento guardado', 'success');
+          result = DataStore.addMinuta(projectId, { titulo, fecha, archivo });
+          if (result) App.showToast('Documento guardado', 'success');
         }
-        onSaved();
+        
+        if (!result) {
+          App.showToast('Error: Límite de almacenamiento excedido. El PDF es demasiado grande o hay muchos datos guardados.', 'error');
+        } else {
+          onSaved();
+        }
       };
       reader.readAsDataURL(file);
     } else {
+      let result = null;
       if (editingMinutaId) {
         const archivoVal = _pendingMinutaFile === null ? null : undefined;
-        DataStore.updateMinuta(projectId, editingMinutaId, { titulo, fecha, archivo: archivoVal });
-        App.showToast('Documento actualizado', 'success');
+        result = DataStore.updateMinuta(projectId, editingMinutaId, { titulo, fecha, archivo: archivoVal });
+        if (result) App.showToast('Documento actualizado', 'success');
       } else {
-        DataStore.addMinuta(projectId, { titulo, fecha, archivo: null });
-        App.showToast('Documento guardado', 'success');
+        result = DataStore.addMinuta(projectId, { titulo, fecha, archivo: null });
+        if (result) App.showToast('Documento guardado', 'success');
       }
-      onSaved();
+      
+      if (!result) {
+        App.showToast('Error: Límite de almacenamiento excedido.', 'error');
+      } else {
+        onSaved();
+      }
     }
   }
 

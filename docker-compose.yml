@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  oracle-db:
+    image: gvenzl/oracle-free:latest
+    container_name: oracle-db
+    ports:
+      - "1521:1521"
+    environment:
+      - ORACLE_PASSWORD=oracle_password
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    restart: always
+
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend-api
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DB_USER=SYSTEM
+      - DB_PASSWORD=oracle_password
+      - DB_CONNECT_STRING=oracle-db:1521/FREEPDB1
+    depends_on:
+      - oracle-db
+    restart: always
+
+volumes:
+  oracle-data:

@@ -1,13 +1,27 @@
 /* ============================================
-   DATA LAYER - CRUD + localStorage
+   DATA LAYER - Synchronized with Oracle Database via API
    ============================================ */
 
 const DataStore = (() => {
+  const API_BASE = 'http://localhost:3000/api';
+
   const STORAGE_KEYS = {
     PROJECTS: 'div_sistemas_projects',
     TEAM: 'div_sistemas_team',
     HISTORY: 'div_sistemas_history',
     SETTINGS: 'div_sistemas_settings'
+  };
+
+  /* ── In-Memory Cache ── */
+  let cachedProjects = [];
+  let cachedTeam = [];
+  let cachedHistory = [];
+  let cachedSettings = {
+    deadlinesEnabled: true,
+    deadlineDays: 15,
+    saturatedTeamEnabled: true,
+    missingDatesEnabled: true,
+    inconsistenciesEnabled: true
   };
 
   /* ── Status Definitions ── */
@@ -66,25 +80,103 @@ const DataStore = (() => {
     }
   }
 
-  function saveToStorage(key, data) {
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch (e) {
-      console.error('Error saving to localStorage:', e);
+  /* ── INITIALIZE CACHE & AUTO-MIGRATION ── */
+  async function initializeCache() {
+    const migratedKey = 'div_sistemas_migrated_to_db';
+    const isMigrated = localStorage.getItem(migratedKey) === 'true';
+
+    if (!isMigrated) {
+      // Fetch local storage contents
+      const localProjects = getFromStorage(STORAGE_KEYS.PROJECTS);
+      const localTeam = getFromStorage(STORAGE_KEYS.TEAM);
+      const localHistory = getFromStorage(STORAGE_KEYS.HISTORY);
+      const localSettings = getFromStorage('div_sistemas_notif_settings');
+
+      if (localProjects || localTeam || localHistory || localSettings) {
+        console.log('Detectados datos en localStorage. Migrando a la base de datos Oracle...');
+        try {
+          const response = await fetch(`${API_BASE}/migrate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              projects: localProjects || [],
+              team: localTeam || [],
+              history: localHistory || [],
+              settings: localSettings || null
+            })
+          });
+
+          if (response.ok) {
+            console.log('Migración exitosa del localStorage al backend.');
+            localStorage.setItem(migratedKey, 'true');
+            // Clear local storage keys to free browser memory
+            Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
+            localStorage.removeItem('div_sistemas_notif_settings');
+          } else {
+            console.error('La migración falló en el servidor.');
+          }
+        } catch (err) {
+          console.error('Error de red al intentar migrar los datos locales:', err);
+        }
+      } else {
+        localStorage.setItem(migratedKey, 'true');
+      }
     }
+
+    // Load Cache from Backend API
+    try {
+      const [projectsRes, teamRes, historyRes, settingsRes] = await Promise.all([
+        fetch(`${API_BASE}/projects`),
+        fetch(`${API_BASE}/team`),
+        fetch(`${API_BASE}/history`),
+        fetch(`${API_BASE}/settings`)
+      ]);
+
+      if (projectsRes.ok) cachedProjects = await projectsRes.json();
+      if (teamRes.ok) cachedTeam = await teamRes.json();
+      if (historyRes.ok) cachedHistory = await historyRes.json();
+      if (settingsRes.ok) cachedSettings = await settingsRes.json();
+
+      console.log('Caché sincronizado correctamente con Oracle DB.');
+
+      // Seed if database is completely empty
+      if (cachedProjects.length === 0 && cachedTeam.length === 0) {
+        console.log('Base de datos vacía. Cargando datos semilla iniciales...');
+        await seedSampleData();
+      }
+    } catch (err) {
+      console.error('Error al conectarse con el API backend en localhost:3000:', err);
+      // Fallback to empty states if offline so app doesn't break
+      cachedProjects = [];
+      cachedTeam = [];
+      cachedHistory = [];
+    }
+  }
+
+  /* ── SETTINGS ── */
+  function getSettings() {
+    return cachedSettings;
+  }
+
+  function saveSettings(settings) {
+    cachedSettings = settings;
+    fetch(`${API_BASE}/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    }).catch(err => console.error('Error al guardar configuración en servidor:', err));
   }
 
   /* ── PROJECTS CRUD ── */
   function getProjects() {
-    return getFromStorage(STORAGE_KEYS.PROJECTS) || [];
+    return cachedProjects;
   }
 
   function getProjectById(id) {
-    return getProjects().find(p => p.id === id);
+    return cachedProjects.find(p => p.id === id);
   }
 
   function createProject(projectData) {
-    const projects = getProjects();
     const newProject = {
       id: generateId(),
       nombre: projectData.nombre || '',
@@ -113,20 +205,28 @@ const DataStore = (() => {
       observaciones: projectData.observaciones || '',
       minutas: projectData.minutas || [],
       ticketsMantis: projectData.ticketsMantis || [],
+      ticketsTaiga: projectData.ticketsTaiga || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    projects.push(newProject);
-    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    
+    cachedProjects.push(newProject);
+
+    // Save to Database
+    fetch(`${API_BASE}/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newProject)
+    }).catch(err => console.error('Error al guardar proyecto en base de datos:', err));
+
     addHistory('create', 'project', newProject.id, `Proyecto "${newProject.nombre}" creado`);
     return newProject;
   }
 
   function updateProject(id, updates) {
-    const projects = getProjects();
-    const index = projects.findIndex(p => p.id === id);
+    const index = cachedProjects.findIndex(p => p.id === id);
     if (index === -1) return null;
-    const oldProject = { ...projects[index] };
+    const oldProject = { ...cachedProjects[index] };
 
     // Auto-set fechaProduccion when transitioning to 'produccion'
     if (updates.estado === 'produccion' && oldProject.estado !== 'produccion') {
@@ -137,8 +237,14 @@ const DataStore = (() => {
       updates.fechaProduccion = '';
     }
 
-    projects[index] = { ...projects[index], ...updates, updatedAt: new Date().toISOString() };
-    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    cachedProjects[index] = { ...cachedProjects[index], ...updates, updatedAt: new Date().toISOString() };
+    
+    // Save to Database
+    fetch(`${API_BASE}/projects/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cachedProjects[index])
+    }).catch(err => console.error('Error al actualizar proyecto en base de datos:', err));
 
     // Log changes
     const changes = [];
@@ -148,53 +254,59 @@ const DataStore = (() => {
       }
     }
     if (changes.length > 0) {
-      addHistory('update', 'project', id, `Proyecto "${projects[index].nombre}" actualizado: ${changes.join(', ')}`);
+      addHistory('update', 'project', id, `Proyecto "${cachedProjects[index].nombre}" actualizado: ${changes.join(', ')}`);
     }
-    return projects[index];
+    return cachedProjects[index];
   }
 
   function autoArchiveOldProductionProjects() {
-    const projects = getProjects();
     const now = new Date();
     let changed = false;
 
-    for (let i = 0; i < projects.length; i++) {
-      const p = projects[i];
+    for (let i = 0; i < cachedProjects.length; i++) {
+      const p = cachedProjects[i];
       if (p.estado === 'produccion' && !p.kanbanPinned) {
         const prodDate = p.fechaProduccion || p.fechaRealFin;
         if (prodDate) {
           const start = new Date(prodDate + 'T12:00:00');
           const diffDays = Math.floor((now - start) / (1000 * 60 * 60 * 24));
           if (diffDays > 60) {
-            projects[i].estado = 'archivado';
-            projects[i].updatedAt = new Date().toISOString();
+            cachedProjects[i].estado = 'archivado';
+            cachedProjects[i].updatedAt = new Date().toISOString();
             changed = true;
+            
+            // Sync this single project
+            fetch(`${API_BASE}/projects/${p.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(cachedProjects[i])
+            }).catch(err => console.error('Error auto-archiving project:', err));
+
             addHistory('update', 'project', p.id, `Proyecto "${p.nombre}" archivado automáticamente (más de 60 días en producción)`);
           }
         }
       }
     }
-
-    if (changed) {
-      saveToStorage(STORAGE_KEYS.PROJECTS, projects);
-    }
     return changed;
   }
 
   function deleteProject(id) {
-    const projects = getProjects();
-    const project = projects.find(p => p.id === id);
+    const project = cachedProjects.find(p => p.id === id);
     if (!project) return false;
-    const filtered = projects.filter(p => p.id !== id);
-    saveToStorage(STORAGE_KEYS.PROJECTS, filtered);
+    cachedProjects = cachedProjects.filter(p => p.id !== id);
+
+    // Sync deletion
+    fetch(`${API_BASE}/projects/${id}`, {
+      method: 'DELETE'
+    }).catch(err => console.error('Error al eliminar proyecto de base de datos:', err));
+
     addHistory('delete', 'project', id, `Proyecto "${project.nombre}" eliminado`);
     return true;
   }
 
   /* ── MINUTAS & TICKETS CRUD ── */
   function addMinuta(projectId, minutaData) {
-    const projects = getProjects();
-    const p = projects.find(p => p.id === projectId);
+    const p = cachedProjects.find(p => p.id === projectId);
     if (!p) return null;
     if (!p.minutas) p.minutas = [];
     const minuta = {
@@ -206,25 +318,36 @@ const DataStore = (() => {
     };
     p.minutas.push(minuta);
     p.updatedAt = new Date().toISOString();
-    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    
+    // Save project changes
+    fetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    }).catch(err => console.error('Error al guardar minuta:', err));
+
     addHistory('update', 'project', projectId, `Minuta "${minuta.titulo}" agregada`);
     return minuta;
   }
 
   function removeMinuta(projectId, minutaId) {
-    const projects = getProjects();
-    const p = projects.find(p => p.id === projectId);
+    const p = cachedProjects.find(p => p.id === projectId);
     if (!p || !p.minutas) return false;
     p.minutas = p.minutas.filter(m => m.id !== minutaId);
     p.updatedAt = new Date().toISOString();
-    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    
+    fetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    }).catch(err => console.error('Error al eliminar minuta:', err));
+
     addHistory('update', 'project', projectId, `Minuta eliminada`);
     return true;
   }
 
   function updateMinuta(projectId, minutaId, minutaData) {
-    const projects = getProjects();
-    const p = projects.find(p => p.id === projectId);
+    const p = cachedProjects.find(p => p.id === projectId);
     if (!p || !p.minutas) return null;
     const index = p.minutas.findIndex(m => m.id === minutaId);
     if (index === -1) return null;
@@ -240,14 +363,19 @@ const DataStore = (() => {
 
     p.minutas[index] = updatedMinuta;
     p.updatedAt = new Date().toISOString();
-    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+
+    fetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    }).catch(err => console.error('Error al actualizar minuta:', err));
+
     addHistory('update', 'project', projectId, `Minuta "${updatedMinuta.titulo}" actualizada`);
     return updatedMinuta;
   }
 
   function addTicketMantis(projectId, ticketData) {
-    const projects = getProjects();
-    const p = projects.find(p => p.id === projectId);
+    const p = cachedProjects.find(p => p.id === projectId);
     if (!p) return null;
     if (!p.ticketsMantis) p.ticketsMantis = [];
     const ticket = {
@@ -259,25 +387,35 @@ const DataStore = (() => {
     };
     p.ticketsMantis.push(ticket);
     p.updatedAt = new Date().toISOString();
-    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    
+    fetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    }).catch(err => console.error('Error al guardar ticket Mantis:', err));
+
     addHistory('update', 'project', projectId, `Ticket Mantis agregado: ${ticket.descripcion.substring(0, 50)}`);
     return ticket;
   }
 
   function removeTicketMantis(projectId, ticketId) {
-    const projects = getProjects();
-    const p = projects.find(p => p.id === projectId);
+    const p = cachedProjects.find(p => p.id === projectId);
     if (!p || !p.ticketsMantis) return false;
     p.ticketsMantis = p.ticketsMantis.filter(t => t.id !== ticketId);
     p.updatedAt = new Date().toISOString();
-    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    
+    fetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    }).catch(err => console.error('Error al eliminar ticket Mantis:', err));
+
     addHistory('update', 'project', projectId, `Ticket Mantis eliminado`);
     return true;
   }
 
   function addTicketTaiga(projectId, ticketData) {
-    const projects = getProjects();
-    const p = projects.find(p => p.id === projectId);
+    const p = cachedProjects.find(p => p.id === projectId);
     if (!p) return null;
     if (!p.ticketsTaiga) p.ticketsTaiga = [];
     const ticket = {
@@ -289,33 +427,43 @@ const DataStore = (() => {
     };
     p.ticketsTaiga.push(ticket);
     p.updatedAt = new Date().toISOString();
-    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    
+    fetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    }).catch(err => console.error('Error al guardar ticket Taiga:', err));
+
     addHistory('update', 'project', projectId, `Enlace Taiga agregado: ${ticket.descripcion.substring(0, 50)}`);
     return ticket;
   }
 
   function removeTicketTaiga(projectId, ticketId) {
-    const projects = getProjects();
-    const p = projects.find(p => p.id === projectId);
+    const p = cachedProjects.find(p => p.id === projectId);
     if (!p || !p.ticketsTaiga) return false;
     p.ticketsTaiga = p.ticketsTaiga.filter(t => t.id !== ticketId);
     p.updatedAt = new Date().toISOString();
-    saveToStorage(STORAGE_KEYS.PROJECTS, projects);
+    
+    fetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    }).catch(err => console.error('Error al eliminar ticket Taiga:', err));
+
     addHistory('update', 'project', projectId, `Enlace Taiga eliminado`);
     return true;
   }
 
   /* ── TEAM CRUD ── */
   function getTeam() {
-    return getFromStorage(STORAGE_KEYS.TEAM) || [];
+    return cachedTeam;
   }
 
   function getTeamMemberById(id) {
-    return getTeam().find(m => m.id === id);
+    return cachedTeam.find(m => m.id === id);
   }
 
   function createTeamMember(memberData) {
-    const team = getTeam();
     const newMember = {
       id: generateId(),
       nombre: memberData.nombre || '',
@@ -331,53 +479,73 @@ const DataStore = (() => {
       maxProyectos: memberData.maxProyectos || 5,
       createdAt: new Date().toISOString()
     };
-    team.push(newMember);
-    saveToStorage(STORAGE_KEYS.TEAM, team);
+    
+    cachedTeam.push(newMember);
+
+    fetch(`${API_BASE}/team`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newMember)
+    }).catch(err => console.error('Error al crear miembro en base de datos:', err));
+
     addHistory('create', 'team', newMember.id, `Miembro "${newMember.nombre} ${newMember.apellido}" agregado`);
     return newMember;
   }
 
   function updateTeamMember(id, updates) {
-    const team = getTeam();
-    const index = team.findIndex(m => m.id === id);
+    const index = cachedTeam.findIndex(m => m.id === id);
     if (index === -1) return null;
-    team[index] = { ...team[index], ...updates };
-    saveToStorage(STORAGE_KEYS.TEAM, team);
-    addHistory('update', 'team', id, `Miembro "${team[index].nombre} ${team[index].apellido}" actualizado`);
-    return team[index];
+    cachedTeam[index] = { ...cachedTeam[index], ...updates };
+    
+    fetch(`${API_BASE}/team/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cachedTeam[index])
+    }).catch(err => console.error('Error al actualizar miembro en base de datos:', err));
+
+    addHistory('update', 'team', id, `Miembro "${cachedTeam[index].nombre} ${cachedTeam[index].apellido}" actualizado`);
+    return cachedTeam[index];
   }
 
   function deleteTeamMember(id) {
-    const team = getTeam();
-    const member = team.find(m => m.id === id);
+    const member = cachedTeam.find(m => m.id === id);
     if (!member) return false;
-    const filtered = team.filter(m => m.id !== id);
-    saveToStorage(STORAGE_KEYS.TEAM, filtered);
+    cachedTeam = cachedTeam.filter(m => m.id !== id);
+    
+    fetch(`${API_BASE}/team/${id}`, {
+      method: 'DELETE'
+    }).catch(err => console.error('Error al eliminar miembro en base de datos:', err));
+
     addHistory('delete', 'team', id, `Miembro "${member.nombre} ${member.apellido}" eliminado`);
     return true;
   }
 
   /* ── HISTORY ── */
   function getHistory() {
-    return getFromStorage(STORAGE_KEYS.HISTORY) || [];
+    return cachedHistory;
   }
 
   function addHistory(action, entity, entityId, description) {
-    const history = getHistory();
-    history.unshift({
+    const newRecord = {
       id: generateId(),
       action,
       entity,
       entityId,
       description,
       timestamp: new Date().toISOString()
-    });
-    // Keep only last 200 entries
-    if (history.length > 200) history.splice(200);
-    saveToStorage(STORAGE_KEYS.HISTORY, history);
+    };
+    
+    cachedHistory.unshift(newRecord);
+    if (cachedHistory.length > 200) cachedHistory.splice(200);
+
+    fetch(`${API_BASE}/history`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newRecord)
+    }).catch(err => console.error('Error al guardar registro de historial:', err));
   }
 
-  /* ── ANALYTICS ── */
+  /* ── ANALYTICS (calculados localmente sobre el caché) ── */
   function getProjectsByStatus() {
     const projects = getProjects().filter(p => p.estado !== 'archivado');
     const result = {};
@@ -478,7 +646,6 @@ const DataStore = (() => {
       const diffYears = now.getFullYear() - oldestDate.getFullYear();
       const diffMonths = now.getMonth() - oldestDate.getMonth();
       count = Math.max(diffYears * 12 + diffMonths + 1, 1);
-      // Limit to 60 months (5 years) to avoid charting lag
       count = Math.min(count, 60);
     } else {
       count = parseInt(monthsCount, 10) || 6;
@@ -492,7 +659,6 @@ const DataStore = (() => {
     }
 
     projects.forEach(p => {
-      // Use fechaSolicitud (real request date) instead of createdAt (migration timestamp)
       const createdKey = (p.fechaSolicitud || p.createdAt || '').substring(0, 7);
       const completedKey = p.fechaRealFin ? p.fechaRealFin.substring(0, 7) : null;
 
@@ -500,7 +666,6 @@ const DataStore = (() => {
       if (completedKey && months[completedKey]) months[completedKey].completed++;
     });
 
-    // Calculate active development projects cumulatively for each of the 6 months
     Object.keys(months).forEach(monthKey => {
       projects.forEach(p => {
         const start = p.fechaRealInicio || p.fechaEstimadaInicio;
@@ -508,29 +673,23 @@ const DataStore = (() => {
         const startMonth = start.substring(0, 7);
         if (startMonth > monthKey) return;
 
-        // If it has a real end date (finished or cancelled)
         if (p.fechaRealFin) {
           const endMonth = p.fechaRealFin.substring(0, 7);
           if (endMonth <= monthKey) return;
         } else {
-          // If it is completed or cancelled but has no real end date, check estimated finish date or state
           if (['produccion', 'cancelado', 'archivado'].includes(p.estado)) {
             const estFin = p.fechaEstimadaFin;
             if (estFin) {
               const estFinMonth = estFin.substring(0, 7);
               if (estFinMonth <= monthKey) return;
             } else {
-              return; // Completed/cancelled with no end dates, assume not active
+              return;
             }
           }
-          
-          // If it's a new request or backlog, it hasn't actually started development
           if (['solicitud', 'backlog'].includes(p.estado)) {
             return;
           }
         }
-
-        // If we reached here, the project was active in development during monthKey
         months[monthKey].desarrollo++;
       });
     });
@@ -538,51 +697,8 @@ const DataStore = (() => {
     return months;
   }
 
-  /* ── EXPORT / IMPORT ── */
-  function exportData() {
-    return {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      projects: getProjects(),
-      team: getTeam(),
-      history: getHistory()
-    };
-  }
-
-  function importData(jsonData) {
-    try {
-      const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-      if (data.projects) saveToStorage(STORAGE_KEYS.PROJECTS, data.projects);
-      if (data.team) saveToStorage(STORAGE_KEYS.TEAM, data.team);
-      if (data.history) saveToStorage(STORAGE_KEYS.HISTORY, data.history);
-      addHistory('import', 'system', null, 'Datos importados desde archivo JSON');
-      return true;
-    } catch (e) {
-      console.error('Error importing data:', e);
-      return false;
-    }
-  }
-
-  function clearAllData() {
-    Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
-  }
-
-  /* ── SEED DATA ── */
-  function seedSampleData() {
-    // Check for automatic migration of Excel data
-    if (!localStorage.getItem('div_sistemas_migrated_excel')) {
-      clearAllData();
-      if (typeof MIGRATED_DATA !== 'undefined') {
-        importData(MIGRATED_DATA);
-        localStorage.setItem('div_sistemas_migrated_excel', 'true');
-        return;
-      }
-    }
-
-    // Check if data already exists
-    if (getProjects().length > 0) return;
-
-    // Create team members
+  /* ── SEED DATA (Guardado a DB Oracle) ── */
+  async function seedSampleData() {
     const teamMembers = [
       { nombre: 'Carlos', apellido: 'Méndez', rol: 'Líder Técnico', jerarquia: 'Subprefecto', destino: 'DICO', email: 'cmendez@org.gob', maxProyectos: 4 },
       { nombre: 'Laura', apellido: 'García', rol: 'Desarrollador', jerarquia: 'Oficial Principal', destino: 'DICO', email: 'lgarcia@org.gob', maxProyectos: 5 },
@@ -594,9 +710,19 @@ const DataStore = (() => {
       { nombre: 'Valentina', apellido: 'Ruiz', rol: 'Scrum Master', jerarquia: 'Oficial Principal', destino: 'DICO', email: 'vruiz@org.gob', maxProyectos: 4 }
     ];
 
-    const createdMembers = teamMembers.map(m => createTeamMember(m));
+    const createdMembers = [];
+    for (const m of teamMembers) {
+      const id = generateId();
+      const newM = { ...m, id, activo: true, isExterno: false, createdAt: new Date().toISOString() };
+      
+      await fetch(`${API_BASE}/team`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newM)
+      });
+      createdMembers.push(newM);
+    }
 
-    // Create projects
     const sampleProjects = [
       {
         nombre: 'Sistema de Gestión de Expedientes Digitales',
@@ -655,239 +781,84 @@ const DataStore = (() => {
         fechaEstimadaFin: '2025-07-15',
         fechaRealInicio: '2025-03-20',
         tags: ['rrhh', 'reportes', 'indicadores']
-      },
-      {
-        nombre: 'API de Integración con AFIP',
-        descripcion: 'Integración con los servicios web de AFIP para facturación electrónica y consulta de CUIT.',
-        expediente: 'NOTA-2025-001567',
-        areaSolicitante: 'Administración y Finanzas',
-        estado: 'testing',
-        prioridad: 'alta',
-        dificultad: 8,
-        porcentajeAvance: 85,
-        pm: createdMembers[0].id,
-        liderTecnico: createdMembers[0].id,
-        desarrolladores: [createdMembers[4].id],
-        fechaSolicitud: '2024-11-05',
-        fechaEstimadaInicio: '2025-01-10',
-        fechaEstimadaFin: '2025-06-30',
-        fechaRealInicio: '2025-01-15',
-        tags: ['api', 'afip', 'facturación', 'integración']
-      },
-      {
-        nombre: 'Sistema de Control de Acceso Biométrico',
-        descripcion: 'Control de ingreso y egreso del personal mediante huella digital y reconocimiento facial.',
-        expediente: 'EXP-2025-003210',
-        areaSolicitante: 'Seguridad',
-        estado: 'backlog',
-        prioridad: 'media',
-        dificultad: 8,
-        porcentajeAvance: 0,
-        pm: '',
-        liderTecnico: '',
-        desarrolladores: [],
-        fechaSolicitud: '2025-04-01',
-        fechaEstimadaInicio: '',
-        fechaEstimadaFin: '2026-03-31',
-        tags: ['biométrico', 'acceso', 'seguridad']
-      },
-      {
-        nombre: 'Migración Base de Datos Legacy',
-        descripcion: 'Migración de las bases de datos Oracle legacy a PostgreSQL con refactorización de queries.',
-        expediente: 'NOTA-2024-009812',
-        areaSolicitante: 'División Sistemas',
-        estado: 'desarrollo',
-        prioridad: 'alta',
-        dificultad: 13,
-        porcentajeAvance: 30,
-        sprintActual: 'Sprint 3',
-        pm: createdMembers[0].id,
-        liderTecnico: createdMembers[0].id,
-        desarrolladores: [createdMembers[1].id, createdMembers[4].id],
-        fechaSolicitud: '2024-10-15',
-        fechaEstimadaInicio: '2025-02-01',
-        fechaEstimadaFin: '2025-12-31',
-        fechaRealInicio: '2025-03-01',
-        tags: ['migración', 'base-datos', 'postgresql', 'legacy']
-      },
-      {
-        nombre: 'App Mobile Comunicaciones Internas',
-        descripcion: 'Aplicación móvil para comunicados, notificaciones y directorio interno del organismo.',
-        expediente: 'EXP-2025-004100',
-        areaSolicitante: 'Comunicación Institucional',
-        estado: 'solicitud',
-        prioridad: 'baja',
-        dificultad: 5,
-        porcentajeAvance: 0,
-        pm: '',
-        liderTecnico: '',
-        desarrolladores: [],
-        fechaSolicitud: '2025-05-10',
-        fechaEstimadaInicio: '',
-        fechaEstimadaFin: '',
-        tags: ['mobile', 'comunicación', 'app']
-      },
-      {
-        nombre: 'Automatización de Procesos de Compras',
-        descripcion: 'Sistema para automatizar el circuito de compras: solicitud, cotización, orden de compra, recepción.',
-        expediente: 'NOTA-2025-002100',
-        areaSolicitante: 'Compras y Contrataciones',
-        estado: 'analisis',
-        prioridad: 'alta',
-        dificultad: 8,
-        porcentajeAvance: 20,
-        pm: createdMembers[3].id,
-        productOwner: createdMembers[3].id,
-        desarrolladores: [createdMembers[6].id],
-        fechaSolicitud: '2025-03-05',
-        fechaEstimadaInicio: '2025-07-01',
-        fechaEstimadaFin: '2026-01-31',
-        tags: ['compras', 'automatización', 'workflow']
-      },
-      {
-        nombre: 'Dashboard de Indicadores de Gestión',
-        descripcion: 'Panel de control con KPIs para la Dirección: presupuesto ejecutado, metas cumplidas, etc.',
-        expediente: 'EXP-2025-001890',
-        areaSolicitante: 'Dirección General',
-        estado: 'produccion',
-        prioridad: 'critica',
-        dificultad: 5,
-        porcentajeAvance: 100,
-        pm: createdMembers[0].id,
-        liderTecnico: createdMembers[2].id,
-        desarrolladores: [createdMembers[2].id],
-        fechaSolicitud: '2024-09-01',
-        fechaEstimadaInicio: '2024-10-15',
-        fechaEstimadaFin: '2025-03-31',
-        fechaRealInicio: '2024-10-20',
-        fechaRealFin: '2025-04-10',
-        tags: ['dashboard', 'kpi', 'dirección']
-      },
-      {
-        nombre: 'Sistema de Mesa de Ayuda (Help Desk)',
-        descripcion: 'Sistema de tickets para soporte técnico interno con SLA, categorización y base de conocimiento.',
-        expediente: 'NOTA-2025-003456',
-        areaSolicitante: 'División Sistemas',
-        estado: 'pausado',
-        prioridad: 'media',
-        dificultad: 5,
-        porcentajeAvance: 40,
-        pm: createdMembers[7].id,
-        liderTecnico: createdMembers[4].id,
-        desarrolladores: [createdMembers[6].id],
-        fechaSolicitud: '2025-01-20',
-        fechaEstimadaInicio: '2025-04-01',
-        fechaEstimadaFin: '2025-08-30',
-        fechaRealInicio: '2025-04-05',
-        observaciones: 'Pausado por reasignación de recursos al proyecto de Expedientes Digitales.',
-        tags: ['help-desk', 'tickets', 'soporte']
-      },
-      {
-        nombre: 'Módulo de Notificaciones Electrónicas',
-        descripcion: 'Sistema de notificaciones fehacientes electrónicas con validez legal integrado al DEOX.',
-        expediente: 'EXP-2025-005020',
-        areaSolicitante: 'Legal y Técnica',
-        estado: 'backlog',
-        prioridad: 'alta',
-        dificultad: 8,
-        porcentajeAvance: 0,
-        desarrolladores: [],
-        fechaSolicitud: '2025-05-01',
-        tags: ['notificaciones', 'legal', 'electrónico']
-      },
-      {
-        nombre: 'Rediseño Portal Institucional Web',
-        descripcion: 'Rediseño completo del sitio web institucional con accesibilidad WCAG 2.1 y diseño responsive.',
-        expediente: 'NOTA-2025-001230',
-        areaSolicitante: 'Comunicación Institucional',
-        estado: 'produccion',
-        prioridad: 'media',
-        dificultad: 3,
-        porcentajeAvance: 100,
-        pm: createdMembers[7].id,
-        liderTecnico: createdMembers[6].id,
-        desarrolladores: [createdMembers[6].id],
-        fechaSolicitud: '2024-08-10',
-        fechaEstimadaInicio: '2024-09-15',
-        fechaEstimadaFin: '2025-02-28',
-        fechaRealInicio: '2024-09-20',
-        fechaRealFin: '2025-03-05',
-        tags: ['web', 'portal', 'accesibilidad', 'rediseño']
       }
     ];
 
-    sampleProjects.forEach(p => createProject(p));
-  }
+    for (const p of sampleProjects) {
+      const id = generateId();
+      const newP = {
+        ...p,
+        id,
+        notaSolicitud: '',
+        notaSolicitudPdf: null,
+        linkDocumento: '',
+        fechaEstimadaInicio: p.fechaEstimadaInicio || '',
+        fechaEstimadaFin: p.fechaEstimadaFin || '',
+        fechaRealInicio: p.fechaRealInicio || '',
+        fechaRealFin: p.fechaRealFin || '',
+        fechaProduccion: '',
+        observaciones: '',
+        minutas: [],
+        ticketsMantis: [],
+        ticketsTaiga: [],
+        kanbanPinned: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
 
-  // Self-healing migration for duplicate team member IDs in localStorage
-  function sanitizeLocalStorageData() {
-    // --- Fix duplicate TEAM member IDs ---
-    try {
-      const teamDataStr = localStorage.getItem(STORAGE_KEYS.TEAM);
-      if (teamDataStr) {
-        let team = JSON.parse(teamDataStr);
-        if (Array.isArray(team)) {
-          const seenIds = new Set();
-          let hasDuplicates = false;
-          team.forEach(m => { if (seenIds.has(m.id)) hasDuplicates = true; seenIds.add(m.id); });
-
-          if (hasDuplicates) {
-            console.log("Sanitizing duplicate team IDs in localStorage...");
-            const idCounts = {};
-            const updatedTeam = team.map(m => {
-              const originalId = m.id;
-              idCounts[originalId] = (idCounts[originalId] || 0) + 1;
-              if (idCounts[originalId] > 1) {
-                let newId = originalId + '_b';
-                if (m.nombre === 'Willians' && m.apellido === 'Nadia') newId = 't_18_b';
-                else if (m.nombre === 'Gabriel' && m.apellido === 'Bergamini') newId = 't_22_b';
-                else if (m.nombre === 'Pezzelato' && m.apellido === 'Gustavo Andres') newId = 't_30_b';
-                else if (idCounts[originalId] > 2) newId = originalId + '_' + idCounts[originalId];
-                m = { ...m, id: newId };
-              }
-              return m;
-            });
-            localStorage.setItem(STORAGE_KEYS.TEAM, JSON.stringify(updatedTeam));
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Error sanitizing duplicate team IDs in localStorage:", e);
+      await fetch(`${API_BASE}/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newP)
+      });
     }
 
-    // --- Fix duplicate PROJECT IDs ---
-    try {
-      const projectsDataStr = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-      if (projectsDataStr) {
-        let projects = JSON.parse(projectsDataStr);
-        if (Array.isArray(projects)) {
-          const seenIds = new Set();
-          let hasDuplicates = false;
-          projects.forEach(p => { if (seenIds.has(p.id)) hasDuplicates = true; seenIds.add(p.id); });
+    // Refresh cache with the seeded database records
+    const [pRes, tRes] = await Promise.all([
+      fetch(`${API_BASE}/projects`),
+      fetch(`${API_BASE}/team`)
+    ]);
+    if (pRes.ok) cachedProjects = await pRes.json();
+    if (tRes.ok) cachedTeam = await tRes.json();
+  }
 
-          if (hasDuplicates) {
-            console.log("Sanitizing duplicate project IDs in localStorage...");
-            const idCounts = {};
-            const updatedProjects = projects.map(p => {
-              const originalId = p.id;
-              idCounts[originalId] = (idCounts[originalId] || 0) + 1;
-              if (idCounts[originalId] > 1) {
-                const suffix = String.fromCharCode(96 + idCounts[originalId]); // _b, _c, _d...
-                p = { ...p, id: originalId + '_' + suffix };
-              }
-              return p;
-            });
-            localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(updatedProjects));
-          }
-        }
-      }
+  function exportData() {
+    return {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      projects: cachedProjects,
+      team: cachedTeam,
+      history: cachedHistory
+    };
+  }
+
+  function importData(jsonData) {
+    try {
+      const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+      fetch(`${API_BASE}/migrate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projects: data.projects || [],
+          team: data.team || [],
+          history: data.history || [],
+          settings: cachedSettings
+        })
+      }).then(() => initializeCache());
+      return true;
     } catch (e) {
-      console.error("Error sanitizing duplicate project IDs in localStorage:", e);
+      console.error('Error importing data:', e);
+      return false;
     }
   }
 
-  // Run one-time sanitization of local storage
-  sanitizeLocalStorageData();
+  function clearAllData() {
+    fetch(`${API_BASE}/migrate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projects: [], team: [], history: [], settings: null })
+    }).then(() => initializeCache());
+  }
 
   /* ── PUBLIC API ── */
   return {
@@ -923,17 +894,20 @@ const DataStore = (() => {
     getMonthlyStats,
     // History
     getHistory,
+    // Settings
+    getSettings,
+    saveSettings,
     // Import/Export
     exportData,
     importData,
     clearAllData,
-    // Seed
-    seedSampleData,
+    // Init Cache
+    initializeCache,
     // Helpers
     autoArchiveOldProductionProjects,
     getTeamMemberName: (id) => {
       if (!id) return '—';
-      const member = getTeam().find(m => m.id === id);
+      const member = cachedTeam.find(m => m.id === id);
       if (!member) return '—';
       const rankStr = member.jerarquia ? `${member.jerarquia} ` : '';
       const destStr = member.destino ? ` (${member.destino})` : '';

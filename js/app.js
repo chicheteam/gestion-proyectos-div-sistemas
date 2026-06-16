@@ -13,9 +13,13 @@ const App = (() => {
     reports: ReportsView
   };
 
-  function init() {
-    // 1. Seed initial mock data if localStorage is empty
-    DataStore.seedSampleData();
+  async function init() {
+    // 1. Initialize Cache from Oracle Database (handles auto-migration if needed)
+    try {
+      await DataStore.initializeCache();
+    } catch (e) {
+      console.error("Error al conectar con la base de datos:", e);
+    }
 
     // 2. Auto-archive old production projects
     DataStore.autoArchiveOldProductionProjects();
