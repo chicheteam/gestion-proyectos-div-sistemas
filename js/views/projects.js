@@ -434,8 +434,8 @@ const ProjectsView = (() => {
   function onPdfSelected(input) {
     const file = input.files[0];
     if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
-      App.showToast('El PDF no debe superar los 8 MB', 'error');
+    if (file.size > 40 * 1024 * 1024) {
+      App.showToast('El PDF no debe superar los 40 MB', 'error');
       input.value = '';
       return;
     }
@@ -954,7 +954,7 @@ const ProjectsView = (() => {
             </div>
           </div>
           <div style="margin-bottom:10px;">
-            <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Archivo PDF (opcional, máx 8 MB)</label>
+            <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Archivo PDF (opcional, máx 40 MB)</label>
             <input type="file" id="minuta-archivo" accept="application/pdf" style="font-size:0.78rem;color:var(--text-secondary);">
             <div id="minuta-file-status"></div>
           </div>
@@ -1309,8 +1309,8 @@ const ProjectsView = (() => {
     };
 
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        App.showToast('El PDF no debe superar los 2 MB por límites del navegador', 'error');
+      if (file.size > 40 * 1024 * 1024) {
+        App.showToast('El PDF no debe superar los 40 MB', 'error');
         return;
       }
       const reader = new FileReader();
