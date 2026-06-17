@@ -52,7 +52,11 @@ async function execute(sql, binds = [], options = {}) {
   } else if (typeof binds === 'object' && binds !== null) {
     const newBinds = {};
     for (const [k, v] of Object.entries(binds)) {
-      newBinds[k] = v === undefined ? null : v;
+      if (v && typeof v === 'object' && 'val' in v) {
+        newBinds[k] = { ...v, val: v.val === undefined ? null : v.val };
+      } else {
+        newBinds[k] = v === undefined ? null : v;
+      }
     }
     binds = newBinds;
   }

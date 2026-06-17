@@ -458,6 +458,7 @@ const ProjectsView = (() => {
 
   function openForm(projectId = null) {
     editingProjectId = projectId;
+    _pendingPdf = undefined;
     const project = projectId ? DataStore.getProjectById(projectId) : null;
     const title = project ? 'Editar Proyecto' : 'Nuevo Proyecto';
     const team = DataStore.getTeam().filter(m => m.activo);
