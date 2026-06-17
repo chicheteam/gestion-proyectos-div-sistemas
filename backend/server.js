@@ -99,7 +99,8 @@ app.get('/api/projects', async (req, res) => {
     const projects = result.rows.map(mapProjectFromDb);
     res.json(projects);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in GET /api/projects:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -111,7 +112,8 @@ app.get('/api/projects/:id', async (req, res) => {
     }
     res.json(mapProjectFromDb(result.rows[0]));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in GET /api/projects/:id:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -170,7 +172,8 @@ app.post('/api/projects', async (req, res) => {
     await db.execute(query, binds);
     res.status(201).json(p);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in POST /api/projects:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -268,7 +271,8 @@ app.put('/api/projects/:id', async (req, res) => {
     const updated = await db.execute('SELECT * FROM PROYECTOS WHERE ID = :id', [id]);
     res.json(mapProjectFromDb(updated.rows[0]));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in PUT /api/projects/:id:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -277,7 +281,8 @@ app.delete('/api/projects/:id', async (req, res) => {
     const result = await db.execute('DELETE FROM PROYECTOS WHERE ID = :id', [req.params.id]);
     res.json({ success: true, rowsAffected: result.rowsAffected });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in DELETE /api/projects/:id:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -289,7 +294,8 @@ app.get('/api/team', async (req, res) => {
     const team = result.rows.map(mapTeamFromDb);
     res.json(team);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in GET /api/team:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -321,7 +327,8 @@ app.post('/api/team', async (req, res) => {
     await db.execute(query, binds);
     res.status(201).json(m);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in POST /api/team:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -362,7 +369,8 @@ app.put('/api/team/:id', async (req, res) => {
     await db.execute(query, binds);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in PUT /api/team/:id:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -371,7 +379,8 @@ app.delete('/api/team/:id', async (req, res) => {
     await db.execute('DELETE FROM EQUIPO WHERE ID = :id', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in DELETE /api/team/:id:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -383,7 +392,8 @@ app.get('/api/history', async (req, res) => {
     const history = result.rows.map(mapHistoryFromDb);
     res.json(history);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in GET /api/history:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -405,7 +415,8 @@ app.post('/api/history', async (req, res) => {
     await db.execute(query, binds);
     res.status(201).json(h);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in POST /api/history:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -426,7 +437,8 @@ app.get('/api/settings', async (req, res) => {
     }
     res.json(JSON.parse(result.rows[0].VALOR));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in GET /api/settings:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -448,7 +460,8 @@ app.put('/api/settings', async (req, res) => {
     }
     res.json(settings);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API Error in PUT /api/settings:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -576,7 +589,7 @@ app.post('/api/migrate', async (req, res) => {
     res.json({ success: true, message: 'All data successfully migrated to Oracle Database.' });
   } catch (err) {
     console.error('Migration failed:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
