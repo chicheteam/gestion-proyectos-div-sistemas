@@ -326,12 +326,33 @@ const DashboardView = (() => {
   function computeSemaphore(projects, team, activeProjects, blocked, solicitudes) {
     const workloads = DataStore.getTeamWorkload();
     const activeWorkloads = workloads.filter(w => w.count > 0 || w.member.activo);
+    const settings = DataStore.getSettings() || {};
     
+    // Team Load thresholds (Defaults: red: 85, yellow: 60)
+    const tLoadRed = settings.thresholdTeamLoadRed !== undefined ? settings.thresholdTeamLoadRed : 85;
+    const tLoadYellow = settings.thresholdTeamLoadYellow !== undefined ? settings.thresholdTeamLoadYellow : 60;
+    
+    // On-Time thresholds (Defaults: red: 50, yellow: 80)
+    const tOnTimeRed = settings.thresholdOnTimeRed !== undefined ? settings.thresholdOnTimeRed : 50;
+    const tOnTimeYellow = settings.thresholdOnTimeYellow !== undefined ? settings.thresholdOnTimeYellow : 80;
+    
+    // Blocked thresholds (Defaults: red: 3, yellow: 1)
+    const tBlockedRed = settings.thresholdBlockedRed !== undefined ? settings.thresholdBlockedRed : 3;
+    const tBlockedYellow = settings.thresholdBlockedYellow !== undefined ? settings.thresholdBlockedYellow : 1;
+    
+    // Pending thresholds (Defaults: red: 6, yellow: 3)
+    const tPendingRed = settings.thresholdPendingRed !== undefined ? settings.thresholdPendingRed : 6;
+    const tPendingYellow = settings.thresholdPendingYellow !== undefined ? settings.thresholdPendingYellow : 3;
+    
+    // No Team thresholds (Defaults: red: 2, yellow: 1)
+    const tNoTeamRed = settings.thresholdNoTeamRed !== undefined ? settings.thresholdNoTeamRed : 2;
+    const tNoTeamYellow = settings.thresholdNoTeamYellow !== undefined ? settings.thresholdNoTeamYellow : 1;
+
     // Team Load
     const avgLoad = activeWorkloads.length > 0
       ? Math.round(activeWorkloads.reduce((s, w) => s + w.loadPercentage, 0) / activeWorkloads.length)
       : 0;
-    const teamLoadColor = avgLoad > 85 ? 'red' : avgLoad > 60 ? 'yellow' : 'green';
+    const teamLoadColor = avgLoad > tLoadRed ? 'red' : avgLoad > tLoadYellow ? 'yellow' : 'green';
 
     // On-time delivery
     const now = new Date();
@@ -343,20 +364,20 @@ const DashboardView = (() => {
       if (deadline >= now) onTimeCount++;
     });
     const onTimePercent = totalWithDeadline > 0 ? Math.round((onTimeCount / totalWithDeadline) * 100) : 100;
-    const onTimeColor = onTimePercent < 50 ? 'red' : onTimePercent < 80 ? 'yellow' : 'green';
+    const onTimeColor = onTimePercent < tOnTimeRed ? 'red' : onTimePercent < tOnTimeYellow ? 'yellow' : 'green';
 
     // Blocked projects
-    const blockedColor = blocked.length >= 3 ? 'red' : blocked.length >= 1 ? 'yellow' : 'green';
+    const blockedColor = blocked.length >= tBlockedRed ? 'red' : blocked.length >= tBlockedYellow ? 'yellow' : 'green';
 
     // Pending requests
-    const solColor = solicitudes.length >= 6 ? 'red' : solicitudes.length >= 3 ? 'yellow' : 'green';
+    const solColor = solicitudes.length >= tPendingRed ? 'red' : solicitudes.length >= tPendingYellow ? 'yellow' : 'green';
 
     // Projects without team
     const noTeamCount = activeProjects.filter(p => {
       if (!['desarrollo', 'testing', 'analisis'].includes(p.estado)) return false;
       return !(p.pm || p.liderTecnico || p.scrumMaster || p.productOwner || p.analistaFuncional || p.qaTester || p.dba || p.uxuiDesigner || (p.desarrolladores && p.desarrolladores.length > 0));
     }).length;
-    const noTeamColor = noTeamCount >= 2 ? 'red' : noTeamCount >= 1 ? 'yellow' : 'green';
+    const noTeamColor = noTeamCount >= tNoTeamRed ? 'red' : noTeamCount >= tNoTeamYellow ? 'yellow' : 'green';
 
     return [
       { label: 'Carga del Equipo', value: `${avgLoad}% promedio`, color: teamLoadColor },

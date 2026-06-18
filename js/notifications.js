@@ -244,7 +244,7 @@ const NotificationsEngine = (() => {
           ⚙️ Configuración
         </div>
       </div>
-      <div class="notifications-settings-view">
+      <div class="notifications-settings-view" style="max-height: 400px; overflow-y: auto;">
         <!-- Deadlines -->
         <div class="notifications-settings-item">
           <div class="notifications-settings-row">
@@ -317,6 +317,61 @@ const NotificationsEngine = (() => {
             </div>
           </div>
         </div>
+
+        <!-- Semaphore Thresholds -->
+        <div style="margin-top: 10px; border-top: 1px solid var(--border-subtle); padding-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="font-size: 0.72rem; font-weight: 700; color: var(--primary-400); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">🚦 Umbrales de Semáforos</div>
+          
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Carga de Equipo (Promedio)</div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span style="font-size:0.65rem; color: var(--status-red); min-width: 45px;">Rojo ></span>
+              <input type="number" value="${settings.thresholdTeamLoadRed ?? 85}" style="width: 55px; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; font-family: 'Inter', sans-serif;" onchange="NotificationsEngine.updateSetting('thresholdTeamLoadRed', parseInt(this.value))">%
+              <span style="font-size:0.65rem; color: var(--status-yellow); min-width: 55px; margin-left: 8px;">Amarillo ></span>
+              <input type="number" value="${settings.thresholdTeamLoadYellow ?? 60}" style="width: 55px; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; font-family: 'Inter', sans-serif;" onchange="NotificationsEngine.updateSetting('thresholdTeamLoadYellow', parseInt(this.value))">%
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Entregas a Tiempo</div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span style="font-size:0.65rem; color: var(--status-red); min-width: 45px;">Rojo <</span>
+              <input type="number" value="${settings.thresholdOnTimeRed ?? 50}" style="width: 55px; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; font-family: 'Inter', sans-serif;" onchange="NotificationsEngine.updateSetting('thresholdOnTimeRed', parseInt(this.value))">%
+              <span style="font-size:0.65rem; color: var(--status-yellow); min-width: 55px; margin-left: 8px;">Amarillo <</span>
+              <input type="number" value="${settings.thresholdOnTimeYellow ?? 80}" style="width: 55px; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; font-family: 'Inter', sans-serif;" onchange="NotificationsEngine.updateSetting('thresholdOnTimeYellow', parseInt(this.value))">%
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Proyectos Bloqueados</div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span style="font-size:0.65rem; color: var(--status-red); min-width: 45px;">Rojo &ge;</span>
+              <input type="number" value="${settings.thresholdBlockedRed ?? 3}" style="width: 55px; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; font-family: 'Inter', sans-serif;" onchange="NotificationsEngine.updateSetting('thresholdBlockedRed', parseInt(this.value))">
+              <span style="font-size:0.65rem; color: var(--status-yellow); min-width: 55px; margin-left: 8px;">Amarillo &ge;</span>
+              <input type="number" value="${settings.thresholdBlockedYellow ?? 1}" style="width: 55px; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; font-family: 'Inter', sans-serif;" onchange="NotificationsEngine.updateSetting('thresholdBlockedYellow', parseInt(this.value))">
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Solicitudes Pendientes</div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span style="font-size:0.65rem; color: var(--status-red); min-width: 45px;">Rojo &ge;</span>
+              <input type="number" value="${settings.thresholdPendingRed ?? 6}" style="width: 55px; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; font-family: 'Inter', sans-serif;" onchange="NotificationsEngine.updateSetting('thresholdPendingRed', parseInt(this.value))">
+              <span style="font-size:0.65rem; color: var(--status-yellow); min-width: 55px; margin-left: 8px;">Amarillo &ge;</span>
+              <input type="number" value="${settings.thresholdPendingYellow ?? 3}" style="width: 55px; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; font-family: 'Inter', sans-serif;" onchange="NotificationsEngine.updateSetting('thresholdPendingYellow', parseInt(this.value))">
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Sin Equipo Asignado</div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span style="font-size:0.65rem; color: var(--status-red); min-width: 45px;">Rojo &ge;</span>
+              <input type="number" value="${settings.thresholdNoTeamRed ?? 2}" style="width: 55px; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; font-family: 'Inter', sans-serif;" onchange="NotificationsEngine.updateSetting('thresholdNoTeamRed', parseInt(this.value))">
+              <span style="font-size:0.65rem; color: var(--status-yellow); min-width: 55px; margin-left: 8px;">Amarillo &ge;</span>
+              <input type="number" value="${settings.thresholdNoTeamYellow ?? 1}" style="width: 55px; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; font-family: 'Inter', sans-serif;" onchange="NotificationsEngine.updateSetting('thresholdNoTeamYellow', parseInt(this.value))">
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -369,6 +424,11 @@ const NotificationsEngine = (() => {
     if (key === 'deadlinesEnabled') {
       const container = document.getElementById('deadline-days-container');
       if (container) container.style.display = value ? 'flex' : 'none';
+    }
+
+    // Refresh dashboard if currently open
+    if (document.getElementById('upcoming-deadlines-list') && typeof DashboardView !== 'undefined') {
+      DashboardView.render();
     }
 
     // Update badge

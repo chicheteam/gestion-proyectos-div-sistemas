@@ -491,7 +491,17 @@ app.get('/api/settings', authMiddleware, async (req, res) => {
         deadlineDays: 15,
         saturatedTeamEnabled: true,
         missingDatesEnabled: true,
-        inconsistenciesEnabled: true
+        inconsistenciesEnabled: true,
+        thresholdTeamLoadRed: 85,
+        thresholdTeamLoadYellow: 60,
+        thresholdOnTimeRed: 50,
+        thresholdOnTimeYellow: 80,
+        thresholdBlockedRed: 3,
+        thresholdBlockedYellow: 1,
+        thresholdPendingRed: 6,
+        thresholdPendingYellow: 3,
+        thresholdNoTeamRed: 2,
+        thresholdNoTeamYellow: 1
       });
     }
     res.json(JSON.parse(result.rows[0].VALOR));
