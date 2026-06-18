@@ -65,77 +65,120 @@ const DashboardView = (() => {
       <!-- 3. Traffic Light Semaphore -->
       ${renderSemaphore(semaphoreData)}
 
-      <!-- 4. Pipeline Visual + KPI Cards -->
-      <div class="charts-grid animate-fade-in" style="animation-delay: 0.15s; grid-template-columns: 1fr 1fr;">
-        <div>
-          ${renderPipeline(pipelineData)}
-        </div>
-        <div>
-          <!-- KPI Cards (compact 2-col grid) -->
-          <div class="kpi-grid" style="grid-template-columns: repeat(2, 1fr); gap: 10px;">
-            <div class="kpi-card" style="cursor: pointer; padding: 14px;" onclick="ProjectsView.setFilter('todos'); App.navigateTo('projects');" title="Ver todos los proyectos registrados">
-              <div class="kpi-card-header" style="margin-bottom: 8px;">
-                <div class="kpi-card-icon blue"><i data-lucide="folder-kanban"></i></div>
-              </div>
-              <div class="kpi-card-value" style="font-size: 1.6rem;">${projects.length}</div>
-              <div class="kpi-card-label">Proyectos Registrados</div>
+      <!-- 4. KPI Cards (Full Width Grid) -->
+      <div class="animate-fade-in" style="animation-delay: 0.05s; margin-bottom: 20px;">
+        <div class="kpi-grid" style="gap: 12px; margin-bottom: 0;">
+          <div class="kpi-card" style="cursor: pointer; padding: 14px;" onclick="ProjectsView.setFilter('todos'); App.navigateTo('projects');" title="Ver todos los proyectos registrados">
+            <div class="kpi-card-header" style="margin-bottom: 8px;">
+              <div class="kpi-card-icon blue"><i data-lucide="folder-kanban"></i></div>
             </div>
-            <div class="kpi-card" style="cursor: pointer; padding: 14px;" onclick="ProjectsView.setFilter('solicitud'); App.navigateTo('projects');" title="Ver solicitudes">
-              <div class="kpi-card-header" style="margin-bottom: 8px;">
-                <div class="kpi-card-icon purple"><i data-lucide="git-pull-request"></i></div>
-              </div>
-              <div class="kpi-card-value" style="font-size: 1.6rem;">${solicitudes.length}</div>
-              <div class="kpi-card-label">Solicitudes</div>
+            <div class="kpi-card-value" style="font-size: 1.6rem;">${projects.length}</div>
+            <div class="kpi-card-label">Proyectos Registrados</div>
+          </div>
+          <div class="kpi-card" style="cursor: pointer; padding: 14px;" onclick="ProjectsView.setFilter('solicitud'); App.navigateTo('projects');" title="Solicitudes:\n${solicitudes.map(p => p.nombre).join('\n') || 'Ninguno'}">
+            <div class="kpi-card-header" style="margin-bottom: 8px;">
+              <div class="kpi-card-icon purple"><i data-lucide="git-pull-request"></i></div>
             </div>
-            <div class="kpi-card" style="cursor: pointer; padding: 14px;" onclick="ProjectsView.setFilter('desarrollo'); App.navigateTo('projects');" title="Ver proyectos en desarrollo">
-              <div class="kpi-card-header" style="margin-bottom: 8px;">
-                <div class="kpi-card-icon cyan"><i data-lucide="code-2"></i></div>
-              </div>
-              <div class="kpi-card-value" style="font-size: 1.6rem;">${inDevelopment.length}</div>
-              <div class="kpi-card-label">En Desarrollo</div>
+            <div class="kpi-card-value" style="font-size: 1.6rem;">${solicitudes.length}</div>
+            <div class="kpi-card-label">Solicitudes</div>
+          </div>
+          <div class="kpi-card" style="cursor: pointer; padding: 14px;" onclick="ProjectsView.setFilter('desarrollo'); App.navigateTo('projects');" title="Proyectos en Desarrollo:\n${inDevelopment.map(p => p.nombre).join('\n') || 'Ninguno'}">
+            <div class="kpi-card-header" style="margin-bottom: 8px;">
+              <div class="kpi-card-icon cyan"><i data-lucide="code-2"></i></div>
             </div>
-            <div class="kpi-card" style="cursor: pointer; padding: 14px;" onclick="ProjectsView.setFilter('produccion'); App.navigateTo('projects');" title="Ver proyectos en producción">
-              <div class="kpi-card-header" style="margin-bottom: 8px;">
-                <div class="kpi-card-icon green"><i data-lucide="check-circle-2"></i></div>
-              </div>
-              <div class="kpi-card-value" style="font-size: 1.6rem;">${completedProjects.length}</div>
-              <div class="kpi-card-label">En Producción</div>
+            <div class="kpi-card-value" style="font-size: 1.6rem;">${inDevelopment.length}</div>
+            <div class="kpi-card-label">En Desarrollo</div>
+          </div>
+          <div class="kpi-card" style="cursor: pointer; padding: 14px;" onclick="ProjectsView.setFilter('produccion'); App.navigateTo('projects');" title="Proyectos en Producción:\n${completedProjects.map(p => p.nombre).join('\n') || 'Ninguno'}">
+            <div class="kpi-card-header" style="margin-bottom: 8px;">
+              <div class="kpi-card-icon green"><i data-lucide="check-circle-2"></i></div>
             </div>
-            <div class="kpi-card" style="cursor: pointer; padding: 14px; border-left: 3px solid var(--status-orange);" onclick="ProjectsView.setFilter('pausado'); App.navigateTo('projects');" title="Ver pausados / bloqueados">
-              <div class="kpi-card-header" style="margin-bottom: 8px;">
-                <div class="kpi-card-icon orange"><i data-lucide="pause-circle"></i></div>
-              </div>
-              <div class="kpi-card-value" style="font-size: 1.6rem;">${blocked.length}</div>
-              <div class="kpi-card-label">Pausados / Bloqueados</div>
+            <div class="kpi-card-value" style="font-size: 1.6rem;">${completedProjects.length}</div>
+            <div class="kpi-card-label">En Producción</div>
+          </div>
+          <div class="kpi-card" style="cursor: pointer; padding: 14px; border-left: 3px solid var(--status-orange);" onclick="ProjectsView.setFilter('pausado'); App.navigateTo('projects');" title="Proyectos Pausados / Bloqueados:\n${blocked.map(p => p.nombre).join('\n') || 'Ninguno'}">
+            <div class="kpi-card-header" style="margin-bottom: 8px;">
+              <div class="kpi-card-icon orange"><i data-lucide="pause-circle"></i></div>
             </div>
-            <div class="kpi-card" style="padding: 14px; border-left: 3px solid var(--status-red);" title="Proyectos Críticos / Altos activos">
-              <div class="kpi-card-header" style="margin-bottom: 8px;">
-                <div class="kpi-card-icon red"><i data-lucide="alert-triangle"></i></div>
-              </div>
-              <div class="kpi-card-value" style="font-size: 1.6rem;">${criticalProjects.length}</div>
-              <div class="kpi-card-label">Críticos / Altos</div>
+            <div class="kpi-card-value" style="font-size: 1.6rem;">${blocked.length}</div>
+            <div class="kpi-card-label">Pausados / Bloqueados</div>
+          </div>
+          <div class="kpi-card" style="cursor: pointer; padding: 14px; border-left: 3px solid var(--status-red);" onclick="DashboardView.openCriticalProjectsDrilldown()" title="Proyectos Críticos / Altos:\n${criticalProjects.map(p => `- ${p.nombre} (${DataStore.getStatusInfo(p.estado).label})`).join('\n') || 'Ninguno'}">
+            <div class="kpi-card-header" style="margin-bottom: 8px;">
+              <div class="kpi-card-icon red"><i data-lucide="alert-triangle"></i></div>
             </div>
-            <div class="kpi-card" style="padding: 14px;">
-              <div class="kpi-card-header" style="margin-bottom: 8px;">
-                <div class="kpi-card-icon purple"><i data-lucide="trending-up"></i></div>
-              </div>
-              <div class="kpi-card-value" style="font-size: 1.6rem;">${avgProgress}%</div>
-              <div class="kpi-card-label">Avance Promedio</div>
+            <div class="kpi-card-value" style="font-size: 1.6rem;">${criticalProjects.length}</div>
+            <div class="kpi-card-label">Críticos / Altos</div>
+          </div>
+          <div class="kpi-card" style="padding: 14px;">
+            <div class="kpi-card-header" style="margin-bottom: 8px;">
+              <div class="kpi-card-icon purple"><i data-lucide="trending-up"></i></div>
             </div>
-            <div class="kpi-card" style="padding: 14px;">
-              <div class="kpi-card-header" style="margin-bottom: 8px;">
-                <div class="kpi-card-icon blue"><i data-lucide="users"></i></div>
-                <span class="kpi-card-trend ${avgProjectsPerDev > 3 ? 'down' : 'up'}">${avgProjectsPerDev > 3 ? 'Saturado' : 'Óptimo'}</span>
-              </div>
-              <div class="kpi-card-value" style="font-size: 1.6rem;">${avgProjectsPerDev}</div>
-              <div class="kpi-card-label">Proy/Persona</div>
+            <div class="kpi-card-value" style="font-size: 1.6rem;">${avgProgress}%</div>
+            <div class="kpi-card-label">Avance Promedio</div>
+          </div>
+          <div class="kpi-card" style="padding: 14px;">
+            <div class="kpi-card-header" style="margin-bottom: 8px;">
+              <div class="kpi-card-icon blue"><i data-lucide="users"></i></div>
+              <span class="kpi-card-trend ${avgProjectsPerDev > 3 ? 'down' : 'up'}">${avgProjectsPerDev > 3 ? 'Saturado' : 'Óptimo'}</span>
             </div>
+            <div class="kpi-card-value" style="font-size: 1.6rem;">${avgProjectsPerDev}</div>
+            <div class="kpi-card-label">Proy/Persona</div>
           </div>
         </div>
       </div>
 
-      <!-- Charts Row 1 -->
+      <!-- 5. Pipeline Visual (Full Width Card) -->
+      <div class="animate-fade-in" style="animation-delay: 0.1s; margin-bottom: 24px;">
+        ${renderPipeline(pipelineData)}
+      </div>
+
+      <!-- 6. Team Heatmap + Upcoming Deadlines (High Impact) -->
+      <div class="charts-grid animate-fade-in" style="animation-delay: 0.15s">
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <div>
+              <div class="chart-card-title">🌡️ Mapa de Calor del Equipo</div>
+              <div class="chart-card-subtitle">Saturación y disponibilidad del personal (Haz click en un miembro para ver sus proyectos)</div>
+            </div>
+          </div>
+          <div id="team-heatmap-container" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <div>
+              <div class="chart-card-title">📅 Próximas Entregas</div>
+              <div class="chart-card-subtitle">Fechas estimadas con semáforo de riesgo</div>
+            </div>
+          </div>
+          <div id="upcoming-deadlines-list" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+      </div>
+
+      <!-- 7. Rendimiento y Velocidad (Throughput) + Actividad Reciente -->
       <div class="charts-grid animate-fade-in" style="animation-delay: 0.25s">
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <div>
+              <div class="chart-card-title">📈 Rendimiento y Velocidad</div>
+              <div class="chart-card-subtitle">Throughput, ratio ingreso/egreso y proyectos en riesgo</div>
+            </div>
+          </div>
+          <div id="throughput-container"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <div>
+              <div class="chart-card-title">Actividad Reciente</div>
+              <div class="chart-card-subtitle">Últimos cambios en el sistema</div>
+            </div>
+          </div>
+          <div id="recent-activity-list" style="max-height: 300px; overflow-y: auto;"></div>
+        </div>
+      </div>
+
+      <!-- 8. Charts Row 1: Evolución Mensual + Distribución por Estado -->
+      <div class="charts-grid animate-fade-in" style="animation-delay: 0.35s">
         <div class="chart-card">
           <div class="chart-card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
             <div>
@@ -168,8 +211,8 @@ const DashboardView = (() => {
         </div>
       </div>
 
-      <!-- Charts Row 2 -->
-      <div class="charts-grid charts-grid-equal animate-fade-in" style="animation-delay: 0.35s">
+      <!-- 9. Charts Row 2: Distribución por Prioridad + Complejidad -->
+      <div class="charts-grid charts-grid-equal animate-fade-in" style="animation-delay: 0.45s">
         <div class="chart-card">
           <div class="chart-card-header">
             <div>
@@ -191,50 +234,6 @@ const DashboardView = (() => {
           <div class="chart-container" style="height: 260px">
             <canvas id="chart-difficulty"></canvas>
           </div>
-        </div>
-      </div>
-
-      <!-- 5. Team Heatmap + 6. Enhanced Deadlines -->
-      <div class="charts-grid animate-fade-in" style="animation-delay: 0.45s">
-        <div class="chart-card">
-          <div class="chart-card-header">
-            <div>
-              <div class="chart-card-title">🌡️ Mapa de Calor del Equipo</div>
-              <div class="chart-card-subtitle">Saturación y disponibilidad del personal</div>
-            </div>
-          </div>
-          <div id="team-heatmap-container" style="max-height: 400px; overflow-y: auto;"></div>
-        </div>
-        <div class="chart-card">
-          <div class="chart-card-header">
-            <div>
-              <div class="chart-card-title">📅 Próximas Entregas</div>
-              <div class="chart-card-subtitle">Fechas estimadas con semáforo de riesgo</div>
-            </div>
-          </div>
-          <div id="upcoming-deadlines-list" style="max-height: 400px; overflow-y: auto;"></div>
-        </div>
-      </div>
-
-      <!-- 7. Throughput KPIs + At-Risk Projects + Activity -->
-      <div class="charts-grid animate-fade-in" style="animation-delay: 0.55s">
-        <div class="chart-card">
-          <div class="chart-card-header">
-            <div>
-              <div class="chart-card-title">📈 Rendimiento y Velocidad</div>
-              <div class="chart-card-subtitle">Throughput, ratio ingreso/egreso y proyectos en riesgo</div>
-            </div>
-          </div>
-          <div id="throughput-container"></div>
-        </div>
-        <div class="chart-card">
-          <div class="chart-card-header">
-            <div>
-              <div class="chart-card-title">Actividad Reciente</div>
-              <div class="chart-card-subtitle">Últimos cambios en el sistema</div>
-            </div>
-          </div>
-          <div id="recent-activity-list" style="max-height: 300px; overflow-y: auto;"></div>
         </div>
       </div>
     `;
@@ -454,7 +453,9 @@ const DashboardView = (() => {
     }
 
     if (criticalProjects.length > 0) {
-      lines.push(`Proyectos de prioridad crítica/alta en curso: <strong>${criticalProjects.length}</strong>.`);
+      const criticalNames = criticalProjects.slice(0, 3).map(p => `"${p.nombre}"`).join(', ');
+      const moreText = criticalProjects.length > 3 ? ` y ${criticalProjects.length - 3} más` : '';
+      lines.push(`Proyectos de prioridad crítica/alta en curso: <strong>${criticalProjects.length}</strong> (${criticalNames}${moreText}).`);
     }
 
     return { level, levelLabel, levelIcon, narrative: lines.join(' ') };
@@ -657,7 +658,7 @@ const DashboardView = (() => {
           <span class="dash-heatmap-summary-item" style="background: var(--status-red-bg); color: var(--status-red);">🔴 ${saturated} Saturado${saturated !== 1 ? 's' : ''}</span>
         </div>
         ${sorted.map(w => `
-          <div class="dash-heatmap-row">
+          <div class="dash-heatmap-row" style="cursor: pointer;" onclick="DashboardView.openTeamMemberDrilldown('${w.member.id}')" title="Ver proyectos de ${w.fullName}">
             <div class="dash-heatmap-name" title="${w.fullName}">${w.fullName}</div>
             <div class="dash-heatmap-bar-container">
               <div class="dash-heatmap-bar-fill ${w.loadLevel}" style="width: ${Math.max(w.loadPercentage, 2)}%;"></div>
@@ -1269,6 +1270,333 @@ const DashboardView = (() => {
     }
   }
 
+  function openTeamMemberDrilldown(memberId) {
+    const workload = DataStore.getTeamWorkload().find(w => w.member.id === memberId);
+    if (!workload) return;
+
+    const { member, fullName, assignedProjects, count, max, loadPercentage, loadLevel, loadLabel } = workload;
+
+    const existing = document.getElementById('team-drilldown-overlay');
+    if (existing) existing.remove();
+
+    const levelColors = {
+      green: '#22c55e',
+      yellow: '#eab308',
+      orange: '#f97316',
+      red: '#ef4444'
+    };
+    const loadColor = levelColors[loadLevel] || '#94a3b8';
+
+    const cardsHTML = assignedProjects.length === 0
+      ? `<div class="drilldown-empty">📊 No tiene proyectos activos asignados en este momento.</div>`
+      : assignedProjects.map(p => {
+          const statusInfo = DataStore.getStatusInfo(p.estado);
+          const prioInfo = DataStore.getPriorityInfo(p.prioridad);
+          
+          // Determine specific roles
+          const roles = [];
+          if (p.pm === member.id) roles.push('Project Manager');
+          if (p.liderTecnico === member.id) roles.push('Líder Técnico');
+          if (p.scrumMaster === member.id) roles.push('Scrum Master');
+          if (p.productOwner === member.id) roles.push('Product Owner');
+          if (p.analistaFuncional === member.id) roles.push('Analista Funcional');
+          if (p.qaTester === member.id) roles.push('QA Tester');
+          if (p.dba === member.id) roles.push('DBA');
+          if (p.uxuiDesigner === member.id) roles.push('UX/UI Designer');
+          if (p.desarrolladores && p.desarrolladores.includes(member.id)) roles.push('Desarrollador');
+
+          const rolesStr = roles.join(', ');
+
+          return `
+          <div class="drilldown-card">
+            <div class="drilldown-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+              <div style="flex: 1;">
+                <div class="drilldown-card-title" style="display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+                  <span class="drilldown-card-name" style="word-break: break-word; font-weight: 700; color: var(--text-primary); font-size: 1.05rem; line-height: 1.4;">${p.nombre}</span>
+                  <div class="drilldown-card-badges" style="display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 2px;">
+                    <span class="badge badge-status ${statusInfo.badgeClass}">${statusInfo.label}</span>
+                    <span class="badge ${prioInfo.badgeClass}">${prioInfo.label}</span>
+                  </div>
+                </div>
+                <div class="drilldown-card-area" style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 4px;">
+                  ${p.areaSolicitante || ''} ${p.expediente ? '&bull; <span style="font-family:monospace;">' + p.expediente + '</span>' : ''}
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="DashboardView.editProjectFromDrilldown('${p.id}')" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--border-subtle); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(99, 102, 241, 0.1)'; this.style.color='var(--primary-400)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.05)'; this.style.color='var(--text-secondary)';">
+                <i data-lucide="pencil" style="width:13px;height:13px;"></i>
+                <span>Editar</span>
+              </button>
+            </div>
+            <div class="drilldown-card-body">
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div>
+                  <div style="font-size: 0.7rem; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Rol en el Proyecto</div>
+                  <div style="font-size: 0.85rem; font-weight: 600; color: var(--primary-400);">${rolesStr || 'Asignado'}</div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div>
+                  <div style="font-size: 0.7rem; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Avance del Proyecto</div>
+                  <div style="display:flex;align-items:center;gap:8px;width:100%;">
+                     <div style="flex:1;background:rgba(99,102,241,0.15);border-radius:4px;height:8px;">
+                       <div style="width:${p.porcentajeAvance}%;background:var(--primary-500);height:8px;border-radius:4px;transition:width .4s"></div>
+                     </div>
+                     <span style="font-weight:700;color:var(--primary-400);min-width:36px;">${p.porcentajeAvance}%</span>
+                  </div>
+                </div>
+
+                <!-- Dates -->
+                <div style="display: flex; gap: 24px; margin-top: 4px;">
+                  <div>
+                    <span style="font-size: 0.68rem; color: var(--text-tertiary); display: block;">Fecha Est. Fin</span>
+                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);">${formatDate(p.fechaEstimadaFin)}</span>
+                  </div>
+                  ${p.sprintActual ? `
+                  <div>
+                    <span style="font-size: 0.68rem; color: var(--text-tertiary); display: block;">Sprint</span>
+                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);">${p.sprintActual}</span>
+                  </div>` : ''}
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'team-drilldown-overlay';
+    overlay.className = 'drilldown-overlay';
+    overlay.innerHTML = `
+      <div class="drilldown-modal">
+        <div class="drilldown-modal-header" style="border-bottom: 2px solid ${loadColor}33;">
+          <div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width: 44px; height: 44px; border-radius: var(--border-radius-lg); background: linear-gradient(135deg, var(--primary-500), var(--accent-500)); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 700; color: white;">
+                ${member.nombre[0]}${member.apellido[0]}
+              </div>
+              <div>
+                <h2 class="drilldown-title">${fullName}</h2>
+                <p class="drilldown-subtitle">${member.rol || 'Miembro'}</p>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div class="drilldown-summary">
+              <div class="drilldown-summary-item">
+                <span style="color:${loadColor};font-size:1.4rem;font-weight:700;">${count} / ${max}</span>
+                <span>Proyectos Activos</span>
+              </div>
+              <div class="drilldown-summary-item">
+                <span style="color:${loadColor};font-size:1.4rem;font-weight:700;">${loadPercentage}%</span>
+                <span>Saturación</span>
+              </div>
+              <div class="drilldown-summary-item">
+                <span style="color:${loadColor};font-size:1.4rem;font-weight:700;">${loadLabel}</span>
+                <span>Estado Carga</span>
+              </div>
+            </div>
+            <button class="drilldown-close" onclick="DashboardView.closeTeamDrilldown()">✕</button>
+          </div>
+        </div>
+        <div class="drilldown-modal-body">
+          <div style="padding-bottom: 12px; border-bottom: 1px solid var(--border-subtle); display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.78rem;">
+            <div>
+              <span style="color: var(--text-tertiary);">Destino:</span> <span style="font-weight: 500; color: var(--text-secondary);">${member.destino || '—'}</span>
+            </div>
+            <div>
+              <span style="color: var(--text-tertiary);">Email:</span> <span style="font-weight: 500; color: var(--text-secondary);">${member.email || '—'}</span>
+            </div>
+            <div>
+              <span style="color: var(--text-tertiary);">Celular:</span> <span style="font-weight: 500; color: var(--text-secondary);">${member.celular || member.telefonoTrabajo || '—'}</span>
+            </div>
+            <div>
+              <span style="color: var(--text-tertiary);">Tipo Contrato:</span> <span style="font-weight: 500; color: var(--text-secondary);">${member.isExterno ? 'Externo' : 'Interno'}</span>
+            </div>
+          </div>
+          
+          <div style="margin-top: 16px;">
+            <h3 style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Proyectos Activos (${count})</h3>
+            ${cardsHTML}
+          </div>
+        </div>
+      </div>
+    `;
+
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) DashboardView.closeTeamDrilldown();
+    });
+    document.body.appendChild(overlay);
+    if (window.lucide) lucide.createIcons();
+    requestAnimationFrame(() => overlay.classList.add('active'));
+  }
+
+  function closeTeamDrilldown() {
+    const overlay = document.getElementById('team-drilldown-overlay');
+    if (overlay) {
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 280);
+    }
+  }
+
+  function openCriticalProjectsDrilldown() {
+    const allProjects = DataStore.getProjects();
+    const activeProjects = allProjects.filter(p => p.estado !== 'archivado' && !['produccion', 'cancelado'].includes(p.estado));
+    const criticalProjects = activeProjects.filter(p => p.prioridad === 'critica' || p.prioridad === 'alta');
+
+    const existing = document.getElementById('critical-drilldown-overlay');
+    if (existing) existing.remove();
+
+    const avgProgress = criticalProjects.length > 0
+      ? Math.round(criticalProjects.reduce((s, p) => s + (p.porcentajeAvance || 0), 0) / criticalProjects.length)
+      : 0;
+
+    const cardsHTML = criticalProjects.length === 0
+      ? `<div class="drilldown-empty">📊 No hay proyectos de prioridad Crítica o Alta activos.</div>`
+      : criticalProjects.map(p => {
+          const statusInfo = DataStore.getStatusInfo(p.estado);
+          const prioInfo = DataStore.getPriorityInfo(p.prioridad);
+          const diffInfo = DataStore.getDifficultyInfo(p.dificultad);
+          const dur = calcDuration(p);
+
+          const devIds = p.desarrolladores || [];
+          const allPeople = [
+            p.pm && { role: 'PM', name: DataStore.getTeamMemberName(p.pm) },
+            p.liderTecnico && { role: 'Líder Téc.', name: DataStore.getTeamMemberName(p.liderTecnico) },
+            p.scrumMaster && { role: 'Scrum', name: DataStore.getTeamMemberName(p.scrumMaster) },
+            p.productOwner && { role: 'PO', name: DataStore.getTeamMemberName(p.productOwner) },
+            ...devIds.map(id => ({ role: 'Dev', name: DataStore.getTeamMemberName(id) }))
+          ].filter(Boolean);
+
+          const personCount = allPeople.length;
+          const devDays = dur !== null ? dur * Math.max(personCount, 1) : null;
+          const startDate = p.fechaRealInicio || p.fechaEstimadaInicio;
+
+          return `
+          <div class="drilldown-card">
+            <div class="drilldown-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+              <div style="flex: 1;">
+                <div class="drilldown-card-title" style="display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+                  <span class="drilldown-card-name" style="word-break: break-word; font-weight: 700; color: var(--text-primary); font-size: 1.05rem; line-height: 1.4;">${p.nombre}</span>
+                  <div class="drilldown-card-badges" style="display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 2px;">
+                    <span class="badge badge-status ${statusInfo.badgeClass}">${statusInfo.label}</span>
+                    <span class="badge ${prioInfo.badgeClass}">${prioInfo.label}</span>
+                  </div>
+                </div>
+                <div class="drilldown-card-area" style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 4px;">${p.areaSolicitante || ''} ${p.expediente ? '&bull; <span style="font-family:monospace;">' + p.expediente + '</span>' : ''}</div>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="DashboardView.editProjectFromDrilldown('${p.id}')" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--border-subtle); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(99, 102, 241, 0.1)'; this.style.color='var(--primary-400)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.05)'; this.style.color='var(--text-secondary)';">
+                <i data-lucide="pencil" style="width:13px;height:13px;"></i>
+                <span>Editar</span>
+              </button>
+            </div>
+
+            <div class="drilldown-card-body">
+              <!-- Time -->
+              <div class="drilldown-section">
+                <div class="drilldown-section-title">⏱ Tiempo</div>
+                <div class="drilldown-metrics">
+                  <div class="drilldown-metric">
+                    <span class="drilldown-metric-val" style="color:#818cf8">${dur !== null ? dur + ' días' : '—'}</span>
+                    <span class="drilldown-metric-lbl">Duración</span>
+                  </div>
+                  <div class="drilldown-metric">
+                    <span class="drilldown-metric-val">${formatDate(startDate)}</span>
+                    <span class="drilldown-metric-lbl">Inicio</span>
+                  </div>
+                  <div class="drilldown-metric">
+                    <span class="drilldown-metric-val">${formatDate(p.fechaEstimadaFin)}</span>
+                    <span class="drilldown-metric-lbl">Est. Fin</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Progress & Difficulty -->
+              <div class="drilldown-section">
+                <div class="drilldown-section-title">📊 Avance y Complejidad</div>
+                <div class="drilldown-metrics">
+                  <div class="drilldown-metric" style="flex:2;">
+                    <div style="display:flex;align-items:center;gap:8px;width:100%;">
+                      <div style="flex:1;background:rgba(99,102,241,0.15);border-radius:4px;height:8px;">
+                        <div style="width:${p.porcentajeAvance}%;background:var(--status-red);height:8px;border-radius:4px;transition:width .4s"></div>
+                      </div>
+                      <span style="font-weight:700;color:var(--status-red);min-width:36px;">${p.porcentajeAvance}%</span>
+                    </div>
+                    <span class="drilldown-metric-lbl">Avance</span>
+                  </div>
+                  <div class="drilldown-metric">
+                    <span class="drilldown-metric-val" style="color:${diffInfo.color}">${p.dificultad} — ${diffInfo.label}</span>
+                    <span class="drilldown-metric-lbl">Complejidad (Fibonacci)</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Team -->
+              ${allPeople.length > 0 ? `
+              <div class="drilldown-section">
+                <div class="drilldown-section-title">👥 Equipo (${personCount} personas)</div>
+                <div class="drilldown-team-grid">
+                  ${allPeople.map(m => `
+                    <div class="drilldown-team-pill">
+                      <span class="drilldown-team-role">${m.role}</span>
+                      <span class="drilldown-team-name">${m.name}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+              ` : ''}
+            </div>
+          </div>`;
+      }).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'critical-drilldown-overlay';
+    overlay.className = 'drilldown-overlay';
+    overlay.innerHTML = `
+      <div class="drilldown-modal">
+        <div class="drilldown-modal-header" style="border-bottom: 2px solid var(--status-red)33;">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:1.5rem;">🚨</span>
+              <div>
+                <h2 class="drilldown-title">Proyectos Críticos / Altos</h2>
+                <p class="drilldown-subtitle">${criticalProjects.length} proyecto${criticalProjects.length !== 1 ? 's' : ''} activo${criticalProjects.length !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div class="drilldown-summary">
+              <div class="drilldown-summary-item">
+                <span style="color:var(--status-red);font-size:1.4rem;font-weight:700;">${criticalProjects.length}</span>
+                <span>Proyectos</span>
+              </div>
+              <div class="drilldown-summary-item">
+                <span style="color:#22c55e;font-size:1.4rem;font-weight:700;">${avgProgress}%</span>
+                <span>Avance promedio</span>
+              </div>
+            </div>
+            <button class="drilldown-close" onclick="DashboardView.closeCriticalDrilldown()">✕</button>
+          </div>
+        </div>
+        <div class="drilldown-modal-body">
+          ${cardsHTML}
+        </div>
+      </div>
+    `;
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) DashboardView.closeCriticalDrilldown();
+    });
+    document.body.appendChild(overlay);
+    if (window.lucide) lucide.createIcons();
+    requestAnimationFrame(() => overlay.classList.add('active'));
+  }
+
+  function closeCriticalDrilldown() {
+    const overlay = document.getElementById('critical-drilldown-overlay');
+    if (overlay) {
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 280);
+    }
+  }
+
   function renderDifficultyChart() {
     const projects = DataStore.getProjects().filter(p => p.estado !== 'archivado');
     const scale = DataStore.DIFFICULTY_SCALE;
@@ -1362,6 +1690,8 @@ const DashboardView = (() => {
 
   function editProjectFromDrilldown(projectId) {
     closeMonthlyDrilldown();
+    closeTeamDrilldown();
+    closeCriticalDrilldown();
     App.navigateTo('projects');
     setTimeout(() => {
       ProjectsView.openForm(projectId);
@@ -1389,5 +1719,5 @@ const DashboardView = (() => {
     statusChart = priorityChart = monthlyChart = difficultyChart = null;
   }
 
-  return { render, destroy, closeMonthlyDrilldown, editProjectFromDrilldown, copyExecSummary };
+  return { render, destroy, closeMonthlyDrilldown, editProjectFromDrilldown, copyExecSummary, openTeamMemberDrilldown, closeTeamDrilldown, openCriticalProjectsDrilldown, closeCriticalDrilldown };
 })();
