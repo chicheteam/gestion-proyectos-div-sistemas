@@ -8,6 +8,7 @@ const authorize = require('./middleware/authorize');
 require('dotenv').config();
 
 const app = express();
+app.set('trust proxy', 1); // Trust the Nginx reverse proxy
 const port = process.env.PORT || 3000;
 
 // Security headers
