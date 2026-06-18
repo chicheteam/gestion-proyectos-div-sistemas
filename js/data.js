@@ -3,7 +3,35 @@
    ============================================ */
 
 const DataStore = (() => {
-  const API_BASE = 'http://localhost:3000/api';
+  const API_BASE = '/api';
+
+  /**
+   * Authenticated fetch wrapper. Adds JWT Bearer token to all API requests.
+   * Handles 401 (expired session) by redirecting to login.
+   */
+  function authFetch(url, options = {}) {
+    if (!options.headers) options.headers = {};
+    // Use AuthManager if available, otherwise try sessionStorage directly
+    if (typeof AuthManager !== 'undefined' && AuthManager.getToken()) {
+      options.headers['Authorization'] = `Bearer ${AuthManager.getToken()}`;
+    } else {
+      try {
+        const stored = sessionStorage.getItem('div_sistemas_session');
+        if (stored) {
+          const session = JSON.parse(stored);
+          if (session.token) options.headers['Authorization'] = `Bearer ${session.token}`;
+        }
+      } catch (e) { /* ignore */ }
+    }
+    return fetch(url, options).then(response => {
+      if (response.status === 401) {
+        sessionStorage.removeItem('div_sistemas_session');
+        window.location.href = 'login.html';
+        throw new Error('Sesión expirada');
+      }
+      return response;
+    });
+  }
 
   const STORAGE_KEYS = {
     PROJECTS: 'div_sistemas_projects',
@@ -95,7 +123,7 @@ const DataStore = (() => {
       if (localProjects || localTeam || localHistory || localSettings) {
         console.log('Detectados datos en localStorage. Migrando a la base de datos Oracle...');
         try {
-          const response = await fetch(`${API_BASE}/migrate`, {
+          const response = await authFetch(`${API_BASE}/migrate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -126,10 +154,10 @@ const DataStore = (() => {
     // Load Cache from Backend API
     try {
       const [projectsRes, teamRes, historyRes, settingsRes] = await Promise.all([
-        fetch(`${API_BASE}/projects`),
-        fetch(`${API_BASE}/team`),
-        fetch(`${API_BASE}/history`),
-        fetch(`${API_BASE}/settings`)
+        authFetch(`${API_BASE}/projects`),
+        authFetch(`${API_BASE}/team`),
+        authFetch(`${API_BASE}/history`),
+        authFetch(`${API_BASE}/settings`)
       ]);
 
       if (projectsRes.ok) cachedProjects = await projectsRes.json();
@@ -160,7 +188,7 @@ const DataStore = (() => {
 
   function saveSettings(settings) {
     cachedSettings = settings;
-    fetch(`${API_BASE}/settings`, {
+    authFetch(`${API_BASE}/settings`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings)
@@ -213,7 +241,7 @@ const DataStore = (() => {
     cachedProjects.push(newProject);
 
     // Save to Database
-    fetch(`${API_BASE}/projects`, {
+    authFetch(`${API_BASE}/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newProject)
@@ -240,7 +268,7 @@ const DataStore = (() => {
     cachedProjects[index] = { ...cachedProjects[index], ...updates, updatedAt: new Date().toISOString() };
     
     // Save to Database
-    fetch(`${API_BASE}/projects/${id}`, {
+    authFetch(`${API_BASE}/projects/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cachedProjects[index])
@@ -276,7 +304,7 @@ const DataStore = (() => {
             changed = true;
             
             // Sync this single project
-            fetch(`${API_BASE}/projects/${p.id}`, {
+            authFetch(`${API_BASE}/projects/${p.id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(cachedProjects[i])
@@ -296,7 +324,7 @@ const DataStore = (() => {
     cachedProjects = cachedProjects.filter(p => p.id !== id);
 
     // Sync deletion
-    fetch(`${API_BASE}/projects/${id}`, {
+    authFetch(`${API_BASE}/projects/${id}`, {
       method: 'DELETE'
     }).catch(err => console.error('Error al eliminar proyecto de base de datos:', err));
 
@@ -320,7 +348,7 @@ const DataStore = (() => {
     p.updatedAt = new Date().toISOString();
     
     // Save project changes
-    fetch(`${API_BASE}/projects/${projectId}`, {
+    authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(p)
@@ -336,7 +364,7 @@ const DataStore = (() => {
     p.minutas = p.minutas.filter(m => m.id !== minutaId);
     p.updatedAt = new Date().toISOString();
     
-    fetch(`${API_BASE}/projects/${projectId}`, {
+    authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(p)
@@ -364,7 +392,7 @@ const DataStore = (() => {
     p.minutas[index] = updatedMinuta;
     p.updatedAt = new Date().toISOString();
 
-    fetch(`${API_BASE}/projects/${projectId}`, {
+    authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(p)
@@ -388,7 +416,7 @@ const DataStore = (() => {
     p.ticketsMantis.push(ticket);
     p.updatedAt = new Date().toISOString();
     
-    fetch(`${API_BASE}/projects/${projectId}`, {
+    authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(p)
@@ -404,7 +432,7 @@ const DataStore = (() => {
     p.ticketsMantis = p.ticketsMantis.filter(t => t.id !== ticketId);
     p.updatedAt = new Date().toISOString();
     
-    fetch(`${API_BASE}/projects/${projectId}`, {
+    authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(p)
@@ -428,7 +456,7 @@ const DataStore = (() => {
     p.ticketsTaiga.push(ticket);
     p.updatedAt = new Date().toISOString();
     
-    fetch(`${API_BASE}/projects/${projectId}`, {
+    authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(p)
@@ -444,7 +472,7 @@ const DataStore = (() => {
     p.ticketsTaiga = p.ticketsTaiga.filter(t => t.id !== ticketId);
     p.updatedAt = new Date().toISOString();
     
-    fetch(`${API_BASE}/projects/${projectId}`, {
+    authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(p)
@@ -482,7 +510,7 @@ const DataStore = (() => {
     
     cachedTeam.push(newMember);
 
-    fetch(`${API_BASE}/team`, {
+    authFetch(`${API_BASE}/team`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newMember)
@@ -497,7 +525,7 @@ const DataStore = (() => {
     if (index === -1) return null;
     cachedTeam[index] = { ...cachedTeam[index], ...updates };
     
-    fetch(`${API_BASE}/team/${id}`, {
+    authFetch(`${API_BASE}/team/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cachedTeam[index])
@@ -512,7 +540,7 @@ const DataStore = (() => {
     if (!member) return false;
     cachedTeam = cachedTeam.filter(m => m.id !== id);
     
-    fetch(`${API_BASE}/team/${id}`, {
+    authFetch(`${API_BASE}/team/${id}`, {
       method: 'DELETE'
     }).catch(err => console.error('Error al eliminar miembro en base de datos:', err));
 
@@ -538,7 +566,7 @@ const DataStore = (() => {
     cachedHistory.unshift(newRecord);
     if (cachedHistory.length > 200) cachedHistory.splice(200);
 
-    fetch(`${API_BASE}/history`, {
+    authFetch(`${API_BASE}/history`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newRecord)
@@ -715,7 +743,7 @@ const DataStore = (() => {
       const id = generateId();
       const newM = { ...m, id, activo: true, isExterno: false, createdAt: new Date().toISOString() };
       
-      await fetch(`${API_BASE}/team`, {
+      await authFetch(`${API_BASE}/team`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newM)
@@ -806,7 +834,7 @@ const DataStore = (() => {
         updatedAt: new Date().toISOString()
       };
 
-      await fetch(`${API_BASE}/projects`, {
+      await authFetch(`${API_BASE}/projects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newP)
@@ -815,8 +843,8 @@ const DataStore = (() => {
 
     // Refresh cache with the seeded database records
     const [pRes, tRes] = await Promise.all([
-      fetch(`${API_BASE}/projects`),
-      fetch(`${API_BASE}/team`)
+      authFetch(`${API_BASE}/projects`),
+      authFetch(`${API_BASE}/team`)
     ]);
     if (pRes.ok) cachedProjects = await pRes.json();
     if (tRes.ok) cachedTeam = await tRes.json();
@@ -835,7 +863,7 @@ const DataStore = (() => {
   function importData(jsonData) {
     try {
       const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-      fetch(`${API_BASE}/migrate`, {
+      authFetch(`${API_BASE}/migrate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -853,7 +881,7 @@ const DataStore = (() => {
   }
 
   function clearAllData() {
-    fetch(`${API_BASE}/migrate`, {
+    authFetch(`${API_BASE}/migrate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ projects: [], team: [], history: [], settings: null })

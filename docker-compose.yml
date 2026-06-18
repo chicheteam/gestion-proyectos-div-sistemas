@@ -22,10 +22,24 @@ services:
     environment:
       - PORT=3000
       - DB_USER=SYSTEM
-      - DB_PASSWORD=oracle_password
+      - DB_PASSWORD=${DB_PASSWORD}
       - DB_CONNECT_STRING=oracle-db:1521/FREEPDB1
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=8h
+      - SUPERADMIN_DNI=${SUPERADMIN_DNI}
+      - SUPERADMIN_INITIAL_PASSWORD=${SUPERADMIN_INITIAL_PASSWORD}
     depends_on:
       - oracle-db
+    restart: always
+  frontend-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: frontend-web
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-api
     restart: always
 
 volumes:

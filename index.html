@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/styles.css?v=8">
+  <link rel="stylesheet" href="css/styles.css?v=9">
 </head>
 <body>
   <div class="app-layout">
@@ -53,15 +53,31 @@
           <i data-lucide="file-bar-chart"></i>
           <span>Reportes</span>
         </div>
+
+        <!-- Admin Section (conditionally shown) -->
+        <div class="sidebar-section-label sidebar-admin-section" id="sidebar-admin-section" style="display: none;">Administración</div>
+        
+        <div class="sidebar-nav-item sidebar-admin-section" id="nav-users" onclick="App.navigateTo('users')" style="display: none;">
+          <i data-lucide="shield-check"></i>
+          <span>Usuarios</span>
+        </div>
       </nav>
       
       <div class="sidebar-footer">
         <div class="sidebar-footer-info">
-          <div class="sidebar-footer-avatar">JD</div>
+          <div class="sidebar-footer-avatar" id="sidebar-user-avatar">—</div>
           <div class="sidebar-footer-text">
-            <strong>Jefe de División</strong>
-            <span>División Sistemas</span>
+            <strong id="sidebar-user-name">Cargando...</strong>
+            <span id="sidebar-user-role" class="sidebar-role-badge">—</span>
           </div>
+        </div>
+        <div class="sidebar-footer-actions">
+          <button class="sidebar-footer-btn" onclick="App.showChangePassword()" title="Cambiar contraseña">
+            🔐
+          </button>
+          <button class="sidebar-footer-btn sidebar-logout-btn" onclick="AuthManager.logout()" title="Cerrar sesión">
+            🚪
+          </button>
         </div>
       </div>
     </aside>
@@ -101,21 +117,25 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 
+  <!-- Auth Module (MUST load first) -->
+  <script src="js/auth.js?v=9"></script>
+
   <!-- Data Layer & Business Logic -->
-  <script src="js/migrated_data.js?v=8"></script>
-  <script src="js/data.js?v=8"></script>
+  <script src="js/migrated_data.js?v=9"></script>
+  <script src="js/data.js?v=9"></script>
   
   <!-- Views -->
-  <script src="js/views/dashboard.js?v=8"></script>
-  <script src="js/views/projects.js?v=8"></script>
-  <script src="js/views/kanban.js?v=8"></script>
-  <script src="js/views/team.js?v=8"></script>
-  <script src="js/views/reports.js?v=8"></script>
+  <script src="js/views/dashboard.js?v=9"></script>
+  <script src="js/views/projects.js?v=9"></script>
+  <script src="js/views/kanban.js?v=9"></script>
+  <script src="js/views/team.js?v=9"></script>
+  <script src="js/views/reports.js?v=9"></script>
+  <script src="js/views/users.js?v=9"></script>
   
   <!-- Notifications Engine -->
-  <script src="js/notifications.js?v=8"></script>
+  <script src="js/notifications.js?v=9"></script>
 
   <!-- Application Bootstrapper -->
-  <script src="js/app.js?v=8"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 </html>

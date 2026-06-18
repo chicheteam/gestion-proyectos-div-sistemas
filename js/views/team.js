@@ -14,9 +14,9 @@ const TeamView = (() => {
           <h2 class="section-title">Equipo de Desarrollo</h2>
           <p class="section-subtitle">Carga de trabajo, saturación y gestión del personal</p>
         </div>
-        <button class="btn btn-primary" onclick="TeamView.openMemberForm()">
+        ${AuthManager.canManageTeam() ? `<button class="btn btn-primary" onclick="TeamView.openMemberForm()">
           <i data-lucide="user-plus" style="width:16px;height:16px;"></i> Nuevo Miembro
-        </button>
+        </button>` : ''}
       </div>
 
       <div class="tabs">
@@ -121,9 +121,9 @@ const TeamView = (() => {
           <div class="empty-state-icon">👥</div>
           <h3>Sin miembros del equipo</h3>
           <p>Agregá miembros para ver su carga de trabajo.</p>
-          <button class="btn btn-primary" onclick="TeamView.openMemberForm()">
+          ${AuthManager.canManageTeam() ? `<button class="btn btn-primary" onclick="TeamView.openMemberForm()">
             <i data-lucide="user-plus" style="width:16px;height:16px;"></i> Agregar Miembro
-          </button>
+          </button>` : ''}
         </div>
       `;
       if (window.lucide) lucide.createIcons();
@@ -332,9 +332,9 @@ const TeamView = (() => {
           <div class="empty-state-icon">🤝</div>
           <h3>Sin contactos externos</h3>
           <p>Agregá contactos externos o stakeholders al sistema.</p>
-          <button class="btn btn-primary" onclick="TeamView.openMemberForm()">
+          ${AuthManager.canManageTeam() ? `<button class="btn btn-primary" onclick="TeamView.openMemberForm()">
             <i data-lucide="user-plus" style="width:16px;height:16px;"></i> Agregar Contacto
-          </button>
+          </button>` : ''}
         </div>
       `;
       return;
@@ -358,9 +358,9 @@ const TeamView = (() => {
           <div class="empty-state-icon">👥</div>
           <h3>Sin miembros</h3>
           <p>Agregá al primer miembro del equipo.</p>
-          <button class="btn btn-primary" onclick="TeamView.openMemberForm()">
+          ${AuthManager.canManageTeam() ? `<button class="btn btn-primary" onclick="TeamView.openMemberForm()">
             <i data-lucide="user-plus" style="width:16px;height:16px;"></i> Agregar Miembro
-          </button>
+          </button>` : ''}
         </div>
       `;
       if (window.lucide) lucide.createIcons();
@@ -434,12 +434,13 @@ const TeamView = (() => {
                         <button class="btn btn-ghost btn-icon sm" title="Gestionar Proyectos" onclick="TeamView.openManageProjectsModal('${m.id}')" style="color:var(--primary-400);">
                           <i data-lucide="folder-kanban" style="width:14px;height:14px;"></i>
                         </button>
+                        ${AuthManager.canManageTeam() ? `
                         <button class="btn btn-ghost btn-icon sm" title="Editar" onclick="TeamView.openMemberForm('${m.id}')">
                           <i data-lucide="pencil" style="width:14px;height:14px;"></i>
                         </button>
                         <button class="btn btn-ghost btn-icon sm" title="Eliminar" onclick="TeamView.openDeleteMember('${m.id}')" style="color:var(--status-red);">
                           <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                        </button>
+                        </button>` : ''}
                       </div>
                     </td>
                   </tr>

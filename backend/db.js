@@ -88,13 +88,16 @@ async function execute(sql, binds = [], options = {}) {
 
 async function runSchemaInitialization() {
   try {
-    // Check if table EQUIPO exists
+    // Check if base tables exist
     const checkTable = await execute(`
       SELECT table_name FROM user_tables WHERE table_name = 'PROYECTOS'
     `);
 
     if (checkTable.rows && checkTable.rows.length > 0) {
-      console.log('Database tables already exist. Skipping schema initialization.');
+      console.log('Base tables already exist. Checking auth tables...');
+      // Check if auth tables need to be created
+      await ensureAuthTables();
+      await seedSuperAdmin();
       return;
     }
 
@@ -118,8 +121,97 @@ async function runSchemaInitialization() {
       await execute(statement);
     }
     console.log('Schema initialized successfully!');
+
+    // Seed superadmin after full schema init
+    await seedSuperAdmin();
   } catch (err) {
     console.error('Error during schema initialization:', err);
+  }
+}
+
+/**
+ * Ensure auth tables exist (for existing databases that need upgrade).
+ */
+async function ensureAuthTables() {
+  const authTables = ['USUARIOS', 'SESIONES', 'AUDIT_LOG'];
+
+  for (const tableName of authTables) {
+    try {
+      const check = await execute(
+        `SELECT table_name FROM user_tables WHERE table_name = :name`,
+        [tableName]
+      );
+
+      if (check.rows.length === 0) {
+        console.log(`Creating missing auth table: ${tableName}...`);
+        const schemaPath = path.join(__dirname, 'schema.sql');
+        const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+
+        // Find the CREATE TABLE statement for this table (up to the ending );)
+        const regex = new RegExp(`CREATE TABLE ${tableName}\\s*\\([\\s\\S]*?\\);`, 'i');
+        const match = schemaSql.match(regex);
+
+        if (match) {
+          // Remove the trailing semicolon since execute doesn't expect it in oracledb
+          const ddl = match[0].replace(/;$/, '').trim();
+          await execute(ddl);
+          console.log(`Table ${tableName} created successfully.`);
+        } else {
+          console.error(`Could not find CREATE TABLE statement for ${tableName} in schema.sql`);
+        }
+      }
+    } catch (err) {
+      console.error(`Error checking/creating table ${tableName}:`, err.message);
+    }
+  }
+}
+
+/**
+ * Seed the initial superadmin user if no superadmin exists.
+ * Uses SUPERADMIN_DNI and SUPERADMIN_INITIAL_PASSWORD from environment variables.
+ */
+async function seedSuperAdmin() {
+  try {
+    // Check if any superadmin exists
+    const check = await execute(
+      "SELECT ID FROM USUARIOS WHERE ROL_SISTEMA = 'superadmin'"
+    );
+
+    if (check.rows.length > 0) {
+      console.log('Superadmin user already exists. Skipping seed.');
+      return;
+    }
+
+    const dni = process.env.SUPERADMIN_DNI;
+    const initialPassword = process.env.SUPERADMIN_INITIAL_PASSWORD;
+
+    if (!dni || !initialPassword) {
+      console.warn('WARNING: No SUPERADMIN_DNI or SUPERADMIN_INITIAL_PASSWORD set in environment variables.');
+      console.warn('Set these variables to create the initial superadmin user on first boot.');
+      return;
+    }
+
+    // Import bcrypt here (lazy load to avoid circular deps at module level)
+    const bcrypt = require('bcrypt');
+    const passwordHash = await bcrypt.hash(initialPassword, 12);
+    const id = 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
+    const now = new Date().toISOString();
+
+    await execute(
+      `INSERT INTO USUARIOS (ID, DNI, PASSWORD_HASH, ROL_SISTEMA, NOMBRE_DISPLAY, ACTIVO, DEBE_CAMBIAR_PASSWORD, CREATED_AT, UPDATED_AT)
+       VALUES (:id, :dni, :hash, 'superadmin', :displayName, 1, 1, :now, :now)`,
+      {
+        id,
+        dni: String(dni).replace(/\D/g, ''),
+        hash: passwordHash,
+        displayName: 'Super Administrador',
+        now
+      }
+    );
+
+    console.log(`Initial superadmin user created with DNI: ${dni}. Please change the password on first login.`);
+  } catch (err) {
+    console.error('Error seeding superadmin:', err.message);
   }
 }
 

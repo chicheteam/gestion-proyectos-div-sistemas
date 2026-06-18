@@ -152,6 +152,7 @@ const KanbanView = (() => {
       const pct = days !== null ? Math.min(100, Math.round((days / PRODUCTION_DAYS_LIMIT) * 100)) : 0;
       const barColor = pct > 80 ? 'var(--status-orange)' : pct > 50 ? '#eab308' : 'var(--status-green, #22c55e)';
       const isPinned = p.kanbanPinned;
+      const canEdit = AuthManager.canEditProject(p);
 
       productionInfo = `
         <div style="margin-top:8px;padding:6px 8px;background:rgba(34,197,94,0.06);border-radius:6px;border:1px solid rgba(34,197,94,0.12);">
@@ -162,6 +163,7 @@ const KanbanView = (() => {
           <div style="height:3px;background:rgba(99,102,241,0.1);border-radius:2px;overflow:hidden;">
             <div style="width:${pct}%;height:100%;background:${barColor};border-radius:2px;transition:width 0.3s;"></div>
           </div>
+          ${canEdit ? `
           <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end;">
             <button onclick="event.stopPropagation(); KanbanView.togglePin('${p.id}')" 
                     title="${isPinned ? 'Desfijar (se ocultará tras 60 días)' : 'Fijar (permanece visible siempre)'}" 
@@ -176,15 +178,19 @@ const KanbanView = (() => {
               Archivar
             </button>
           </div>
+          ` : ''}
         </div>
       `;
     }
 
+    const canDrag = AuthManager.canEditProject(p);
+
     return `
-      <div class="kanban-card" draggable="true" data-id="${p.id}"
+      <div class="kanban-card" draggable="${canDrag}" data-id="${p.id}"
            ondragstart="KanbanView.handleDragStart(event, '${p.id}')"
            ondragend="KanbanView.handleDragEnd(event)"
-           onclick="ProjectsView.showDetail('${p.id}')">
+           onclick="ProjectsView.showDetail('${p.id}')"
+           style="${!canDrag ? 'cursor:pointer;' : ''}">
         <div class="kanban-card-priority" style="background:${prioInfo.color};"></div>
         <div class="kanban-card-title">${p.nombre}</div>
         <div class="kanban-card-meta">
@@ -218,6 +224,10 @@ const KanbanView = (() => {
   function togglePin(projectId) {
     const project = DataStore.getProjectById(projectId);
     if (!project) return;
+    if (!AuthManager.canEditProject(project)) {
+      App.showToast('No tiene permisos para modificar este proyecto.', 'error');
+      return;
+    }
     const newPinned = !project.kanbanPinned;
     DataStore.updateProject(projectId, { kanbanPinned: newPinned });
     App.showToast(newPinned ? '"' + project.nombre + '" fijado en Kanban' : '"' + project.nombre + '" desfijado — se ocultará tras ' + PRODUCTION_DAYS_LIMIT + ' días', 'info');
@@ -227,6 +237,10 @@ const KanbanView = (() => {
   function archiveFromKanban(projectId) {
     const project = DataStore.getProjectById(projectId);
     if (!project) return;
+    if (!AuthManager.canEditProject(project)) {
+      App.showToast('No tiene permisos para modificar este proyecto.', 'error');
+      return;
+    }
     if (confirm('¿Archivar "' + project.nombre + '"? Dejará de aparecer en el Kanban y en la vista general.')) {
       DataStore.updateProject(projectId, { estado: 'archivado', kanbanPinned: false });
       App.showToast('"' + project.nombre + '" archivado', 'success');
@@ -237,6 +251,11 @@ const KanbanView = (() => {
 
   /* ── Drag & Drop Handlers ── */
   function handleDragStart(event, projectId) {
+    const project = DataStore.getProjectById(projectId);
+    if (!project || !AuthManager.canEditProject(project)) {
+      event.preventDefault();
+      return;
+    }
     draggedCard = projectId;
     event.target.classList.add('dragging');
     event.dataTransfer.effectAllowed = 'move';
@@ -270,6 +289,11 @@ const KanbanView = (() => {
 
     const project = DataStore.getProjectById(projectId);
     if (!project || project.estado === newStatus) return;
+
+    if (!AuthManager.canEditProject(project)) {
+      App.showToast('No tiene permisos para mover este proyecto.', 'error');
+      return;
+    }
 
     const newStatusInfo = DataStore.getStatusInfo(newStatus);
 

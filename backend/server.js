@@ -1,16 +1,43 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const db = require('./db');
+const authMiddleware = require('./middleware/auth');
+const authorize = require('./middleware/authorize');
 require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false // Allow inline scripts for frontend
+}));
+
+// CORS - configure for intranet deployment
 app.use(cors());
+
+// Rate limiting for auth endpoints (brute-force protection)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,                   // 20 attempts per window
+  message: { error: 'Demasiados intentos. Intente nuevamente en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 // Oracle CLOB/PDF files can be large, so we increase body limits
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
+/* ── AUTH & USER ROUTES (mounted before protected routes) ── */
+
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/users', userRoutes);
 
 /* ── MAPPING HELPERS ── */
 
@@ -91,9 +118,10 @@ function mapHistoryFromDb(row) {
   };
 }
 
-/* ── ENDPOINTS: PROJECTS ── */
+/* ── ENDPOINTS: PROJECTS (all protected) ── */
 
-app.get('/api/projects', async (req, res) => {
+// GET - any authenticated user can read
+app.get('/api/projects', authMiddleware, async (req, res) => {
   try {
     const result = await db.execute('SELECT * FROM PROYECTOS');
     const projects = result.rows.map(mapProjectFromDb);
@@ -104,7 +132,7 @@ app.get('/api/projects', async (req, res) => {
   }
 });
 
-app.get('/api/projects/:id', async (req, res) => {
+app.get('/api/projects/:id', authMiddleware, async (req, res) => {
   try {
     const result = await db.execute('SELECT * FROM PROYECTOS WHERE ID = :id', [req.params.id]);
     if (result.rows.length === 0) {
@@ -117,7 +145,8 @@ app.get('/api/projects/:id', async (req, res) => {
   }
 });
 
-app.post('/api/projects', async (req, res) => {
+// POST - superadmin, admin can create; carga cannot create new projects
+app.post('/api/projects', authMiddleware, authorize('superadmin', 'admin'), async (req, res) => {
   try {
     const p = req.body;
     const query = `
@@ -177,7 +206,8 @@ app.post('/api/projects', async (req, res) => {
   }
 });
 
-app.put('/api/projects/:id', async (req, res) => {
+// PUT - superadmin, admin, and carga (carga with project assignment check)
+app.put('/api/projects/:id', authMiddleware, authorize('superadmin', 'admin', 'carga'), async (req, res) => {
   try {
     const p = req.body;
     const id = req.params.id;
@@ -194,7 +224,7 @@ app.put('/api/projects/:id', async (req, res) => {
         DESCRIPCION = :descripcion,
         EXPEDIENTE = :expediente,
         NOTA_SOLICITUD = :notaSolicitud,
-        NOTA_SOLICITUD_PDF = NVL(:notaSolicitudPdf, NOTA_SOLICITUD_PDF), -- keep PDF if not provided in updates
+        NOTA_SOLICITUD_PDF = NVL(:notaSolicitudPdf, NOTA_SOLICITUD_PDF),
         AREA_SOLICITANTE = :areaSolicitante,
         LINK_DOCUMENTO = :linkDocumento,
         ESTADO = :estado,
@@ -223,7 +253,6 @@ app.put('/api/projects/:id', async (req, res) => {
       WHERE ID = :id
     `;
 
-    // Special logic to handle PDF null/not sent (if p.notaSolicitudPdf is not defined in updates, we NVL it)
     let pdfVal = p.notaSolicitudPdf;
     if (pdfVal === undefined || pdfVal === null) {
       pdfVal = null;
@@ -276,7 +305,8 @@ app.put('/api/projects/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/projects/:id', async (req, res) => {
+// DELETE - only superadmin and admin
+app.delete('/api/projects/:id', authMiddleware, authorize('superadmin', 'admin'), async (req, res) => {
   try {
     const result = await db.execute('DELETE FROM PROYECTOS WHERE ID = :id', [req.params.id]);
     res.json({ success: true, rowsAffected: result.rowsAffected });
@@ -286,9 +316,10 @@ app.delete('/api/projects/:id', async (req, res) => {
   }
 });
 
-/* ── ENDPOINTS: TEAM ── */
+/* ── ENDPOINTS: TEAM (protected) ── */
 
-app.get('/api/team', async (req, res) => {
+// GET - any authenticated user
+app.get('/api/team', authMiddleware, async (req, res) => {
   try {
     const result = await db.execute('SELECT * FROM EQUIPO');
     const team = result.rows.map(mapTeamFromDb);
@@ -299,7 +330,8 @@ app.get('/api/team', async (req, res) => {
   }
 });
 
-app.post('/api/team', async (req, res) => {
+// POST/PUT/DELETE team - only superadmin and admin
+app.post('/api/team', authMiddleware, authorize('superadmin', 'admin'), async (req, res) => {
   try {
     const m = req.body;
     const query = `
@@ -332,7 +364,7 @@ app.post('/api/team', async (req, res) => {
   }
 });
 
-app.put('/api/team/:id', async (req, res) => {
+app.put('/api/team/:id', authMiddleware, authorize('superadmin', 'admin'), async (req, res) => {
   try {
     const m = req.body;
     const id = req.params.id;
@@ -374,7 +406,7 @@ app.put('/api/team/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/team/:id', async (req, res) => {
+app.delete('/api/team/:id', authMiddleware, authorize('superadmin', 'admin'), async (req, res) => {
   try {
     await db.execute('DELETE FROM EQUIPO WHERE ID = :id', [req.params.id]);
     res.json({ success: true });
@@ -384,9 +416,9 @@ app.delete('/api/team/:id', async (req, res) => {
   }
 });
 
-/* ── ENDPOINTS: HISTORY ── */
+/* ── ENDPOINTS: HISTORY (protected) ── */
 
-app.get('/api/history', async (req, res) => {
+app.get('/api/history', authMiddleware, async (req, res) => {
   try {
     const result = await db.execute('SELECT * FROM HISTORIAL ORDER BY TIMESTAMP DESC');
     const history = result.rows.map(mapHistoryFromDb);
@@ -397,7 +429,7 @@ app.get('/api/history', async (req, res) => {
   }
 });
 
-app.post('/api/history', async (req, res) => {
+app.post('/api/history', authMiddleware, async (req, res) => {
   try {
     const h = req.body;
     const query = `
@@ -422,7 +454,7 @@ app.post('/api/history', async (req, res) => {
 
 /* ── ENDPOINTS: CONFIGURACION (SETTINGS) ── */
 
-app.get('/api/settings', async (req, res) => {
+app.get('/api/settings', authMiddleware, async (req, res) => {
   try {
     const result = await db.execute('SELECT * FROM CONFIGURACION WHERE CLAVE = :key', ['notif_settings']);
     if (result.rows.length === 0) {
@@ -442,10 +474,10 @@ app.get('/api/settings', async (req, res) => {
   }
 });
 
-app.put('/api/settings', async (req, res) => {
+// PUT settings - only superadmin and admin
+app.put('/api/settings', authMiddleware, authorize('superadmin', 'admin'), async (req, res) => {
   try {
     const settings = req.body;
-    // UPSERT style configuration
     const check = await db.execute('SELECT * FROM CONFIGURACION WHERE CLAVE = :key', ['notif_settings']);
     if (check.rows.length === 0) {
       await db.execute('INSERT INTO CONFIGURACION (CLAVE, VALOR) VALUES (:key, :value)', {
@@ -465,9 +497,9 @@ app.put('/api/settings', async (req, res) => {
   }
 });
 
-/* ── ENDPOINTS: MIGRATION ── */
+/* ── ENDPOINTS: MIGRATION (superadmin only) ── */
 
-app.post('/api/migrate', async (req, res) => {
+app.post('/api/migrate', authMiddleware, authorize('superadmin'), async (req, res) => {
   try {
     const { projects, team, history, settings } = req.body;
     console.log(`Starting migration of ${projects?.length || 0} projects, ${team?.length || 0} team members, and ${history?.length || 0} history records.`);
@@ -593,7 +625,7 @@ app.post('/api/migrate', async (req, res) => {
   }
 });
 
-// Health check endpoint
+// Health check endpoint (public, no auth required)
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', uptime: process.uptime() });
 });

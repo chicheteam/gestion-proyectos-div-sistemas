@@ -52,6 +52,7 @@ const ReportsView = (() => {
         </div>
 
         <!-- Import JSON -->
+        ${AuthManager.hasRole('superadmin', 'admin') ? `
         <div class="chart-card animate-slide-up stagger-3" style="cursor:pointer;" onclick="document.getElementById('import-file-input').click()">
           <div style="text-align:center;padding:20px 0;">
             <div style="width:64px;height:64px;border-radius:16px;background:rgba(249,115,22,0.1);display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin:0 auto 16px;">
@@ -67,6 +68,7 @@ const ReportsView = (() => {
             <input type="file" id="import-file-input" accept=".json" style="display:none;" onchange="ReportsView.importJSON(event)">
           </div>
         </div>
+        ` : ''}
 
         <!-- Print Dashboard -->
         <div class="chart-card animate-slide-up stagger-4" style="cursor:pointer;" onclick="ReportsView.printReport()">
@@ -127,6 +129,7 @@ const ReportsView = (() => {
       </div>
 
       <!-- Data Management -->
+      ${AuthManager.hasRole('superadmin', 'admin') ? `
       <div class="chart-card animate-fade-in" style="margin-top:16px;">
         <div class="chart-card-header">
           <div>
@@ -146,6 +149,7 @@ const ReportsView = (() => {
           ⚠️ Los datos se almacenan localmente en el navegador. Recomendamos exportar un backup JSON periódicamente.
         </p>
       </div>
+      ` : ''}
     `;
 
     if (window.lucide) lucide.createIcons();
@@ -192,6 +196,10 @@ const ReportsView = (() => {
 
   /* ── Import JSON ── */
   function importJSON(event) {
+    if (!AuthManager.hasRole('superadmin', 'admin')) {
+      App.showToast('No tiene permisos para importar datos.', 'error');
+      return;
+    }
     const file = event.target.files[0];
     if (!file) return;
 
@@ -354,6 +362,10 @@ const ReportsView = (() => {
   }
 
   function loadSampleData() {
+    if (!AuthManager.hasRole('superadmin', 'admin')) {
+      App.showToast('No tiene permisos para cargar datos de ejemplo.', 'error');
+      return;
+    }
     DataStore.clearAllData();
     DataStore.seedSampleData();
     App.showToast('Datos de ejemplo cargados', 'success');
@@ -362,6 +374,10 @@ const ReportsView = (() => {
   }
 
   function clearData() {
+    if (!AuthManager.hasRole('superadmin', 'admin')) {
+      App.showToast('No tiene permisos para eliminar datos.', 'error');
+      return;
+    }
     if (confirm('¿Estás seguro? Se eliminarán TODOS los datos del sistema. Esta acción no se puede deshacer.')) {
       DataStore.clearAllData();
       App.showToast('Todos los datos fueron eliminados', 'warning');

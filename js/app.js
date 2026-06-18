@@ -10,38 +10,101 @@ const App = (() => {
     projects: ProjectsView,
     kanban: KanbanView,
     team: TeamView,
-    reports: ReportsView
+    reports: ReportsView,
+    users: UsersView
   };
 
   async function init() {
-    // 1. Initialize Cache from Oracle Database (handles auto-migration if needed)
+    // 0. Verify authentication FIRST
+    const isAuth = await AuthManager.init();
+    if (!isAuth) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    // Check if user needs to change password
+    const user = AuthManager.getUser();
+    if (user && user.debeCambiarPassword) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    // 1. Update sidebar with user info
+    updateSidebarUser();
+
+    // 2. Initialize Cache from Oracle Database (handles auto-migration if needed)
     try {
       await DataStore.initializeCache();
     } catch (e) {
       console.error("Error al conectar con la base de datos:", e);
     }
 
-    // 2. Auto-archive old production projects
+    // 3. Auto-archive old production projects
     DataStore.autoArchiveOldProductionProjects();
 
-    // 3. Setup Routing via Hash Change
+    // 4. Setup Routing via Hash Change
     window.addEventListener('hashchange', handleRouting);
     
-    // 3. Initial Routing
+    // 5. Initial Routing
     handleRouting();
 
-    // 4. Setup Global Search Input
+    // 6. Setup Global Search Input
     setupGlobalSearch();
 
-    // 5. Initial Sidebar Counts
+    // 7. Initial Sidebar Counts
     updateSidebarCounts();
 
-    // 6. Initialize Notifications Engine
+    // 8. Initialize Notifications Engine
     NotificationsEngine.init();
+  }
+
+  /**
+   * Update sidebar to show current authenticated user info and admin nav.
+   */
+  function updateSidebarUser() {
+    const user = AuthManager.getUser();
+    if (!user) return;
+
+    // Avatar initials
+    const avatar = document.getElementById('sidebar-user-avatar');
+    if (avatar) {
+      const name = user.nombreDisplay || user.dni;
+      const parts = name.split(' ');
+      avatar.textContent = parts.length >= 2
+        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+        : name.substring(0, 2).toUpperCase();
+    }
+
+    // Display name
+    const nameEl = document.getElementById('sidebar-user-name');
+    if (nameEl) {
+      nameEl.textContent = user.nombreDisplay || `DNI ${user.dni}`;
+    }
+
+    // Role badge
+    const roleEl = document.getElementById('sidebar-user-role');
+    if (roleEl) {
+      roleEl.textContent = AuthManager.getRolLabel(user.rol);
+      roleEl.className = `sidebar-role-badge ${AuthManager.getRolBadgeClass(user.rol)}`;
+    }
+
+    // Show admin section in sidebar if user can manage users
+    if (AuthManager.canManageUsers()) {
+      document.querySelectorAll('.sidebar-admin-section').forEach(el => {
+        el.style.display = '';
+      });
+    }
   }
 
   function handleRouting() {
     const hash = window.location.hash.substring(1);
+    
+    // Prevent unauthorized access to users view
+    if (hash === 'users' && !AuthManager.canManageUsers()) {
+      navigateTo('dashboard', true);
+      return;
+    }
+
     const targetView = views[hash] ? hash : 'dashboard';
     navigateTo(targetView, false);
   }
@@ -77,7 +140,8 @@ const App = (() => {
       projects: { title: 'Gestión de Proyectos', path: 'División Sistemas / Proyectos' },
       kanban: { title: 'Tablero Kanban', path: 'División Sistemas / Kanban' },
       team: { title: 'Equipo de Desarrollo', path: 'División Sistemas / Equipo' },
-      reports: { title: 'Reportes y Exportación', path: 'División Sistemas / Reportes' }
+      reports: { title: 'Reportes y Exportación', path: 'División Sistemas / Reportes' },
+      users: { title: 'Gestión de Usuarios', path: 'División Sistemas / Administración / Usuarios' }
     };
 
     if (breadcrumb && viewMetadata[viewId]) {
@@ -96,7 +160,6 @@ const App = (() => {
       searchInput.value = '';
       
       if (viewId === 'projects') {
-        // ProjectsView has its own toolbar search, hide global header search to avoid confusion
         searchContainer.style.opacity = '0';
         searchContainer.style.pointerEvents = 'none';
       } else if (viewId === 'kanban' || viewId === 'team') {
@@ -165,6 +228,75 @@ const App = (() => {
     }, 3500);
   }
 
+  /**
+   * Show change password modal (triggered from sidebar).
+   */
+  function showChangePassword() {
+    // If UsersView is loaded, use its modal
+    if (typeof UsersView !== 'undefined' && UsersView.showSelfPasswordModal) {
+      // Ensure users view modals exist in DOM
+      if (!document.getElementById('self-pwd-modal-overlay')) {
+        // Navigate to users temporarily to inject modals, then show modal
+        const prevView = currentView;
+        // Create the modal directly instead
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay active';
+        overlay.id = 'self-pwd-modal-overlay-global';
+        overlay.innerHTML = `
+          <div class="modal-content" style="max-width: 440px;">
+            <div class="modal-header">
+              <h3>🔐 Cambiar Mi Contraseña</h3>
+              <button class="modal-close" onclick="document.getElementById('self-pwd-modal-overlay-global').remove()">&times;</button>
+            </div>
+            <div class="modal-body">
+              <form id="self-pwd-form-global">
+                <div class="form-group">
+                  <label class="form-label">Contraseña Actual</label>
+                  <input type="password" class="form-input" id="self-pwd-current-g" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Nueva Contraseña</label>
+                  <input type="password" class="form-input" id="self-pwd-new-g" required minlength="6">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Confirmar Nueva Contraseña</label>
+                  <input type="password" class="form-input" id="self-pwd-confirm-g" required minlength="6">
+                </div>
+                <div class="form-actions" style="margin-top: 1.25rem;">
+                  <button type="button" class="btn btn-outline" onclick="document.getElementById('self-pwd-modal-overlay-global').remove()">Cancelar</button>
+                  <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        document.getElementById('self-pwd-form-global').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const current = document.getElementById('self-pwd-current-g').value;
+          const newPwd = document.getElementById('self-pwd-new-g').value;
+          const confirmPwd = document.getElementById('self-pwd-confirm-g').value;
+
+          if (newPwd !== confirmPwd) {
+            showToast('Las contraseñas no coinciden.', 'error');
+            return;
+          }
+
+          const result = await AuthManager.changePassword(current, newPwd);
+          if (result.success) {
+            showToast('Contraseña cambiada exitosamente.', 'success');
+            overlay.remove();
+          } else {
+            showToast(result.error, 'error');
+          }
+        });
+      } else {
+        UsersView.showSelfPasswordModal();
+      }
+    }
+  }
+
   function setupGlobalSearch() {
     const searchInput = document.getElementById('global-search-input');
     if (!searchInput) return;
@@ -218,7 +350,8 @@ const App = (() => {
     init,
     navigateTo,
     updateSidebarCounts,
-    showToast
+    showToast,
+    showChangePassword
   };
 })();
 

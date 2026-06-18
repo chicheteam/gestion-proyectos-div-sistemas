@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión - División Sistemas</title>
+  <meta name="description" content="Acceso al Sistema de Gestión de Proyectos de la División Sistemas">
+  
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/styles.css?v=9">
+  <style>
+    /* ── Login Page Specific Styles ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body.login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0f172a 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Animated background particles */
+    body.login-page::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+                  radial-gradient(ellipse at 40% 80%, rgba(6, 182, 212, 0.05) 0%, transparent 50%);
+      animation: loginBgShift 20s ease-in-out infinite alternate;
+    }
+
+    @keyframes loginBgShift {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      100% { transform: translate(-5%, 3%) rotate(3deg); }
+    }
+
+    .login-container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 440px;
+      padding: 1.5rem;
+    }
+
+    .login-card {
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 20px;
+      padding: 3rem 2.5rem;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4),
+                  0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+      animation: loginCardEntry 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    @keyframes loginCardEntry {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-brand {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .login-brand-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 1.2rem;
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+    }
+
+    .login-brand h1 {
+      color: #f1f5f9;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.3rem;
+    }
+
+    .login-brand p {
+      color: #94a3b8;
+      font-size: 0.875rem;
+      font-weight: 400;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .login-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .login-field label {
+      color: #cbd5e1;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    .login-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .login-input-icon {
+      position: absolute;
+      left: 14px;
+      color: #64748b;
+      font-size: 1.1rem;
+      pointer-events: none;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 0.85rem 1rem 0.85rem 2.8rem;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 12px;
+      color: #f1f5f9;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9375rem;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .login-input::placeholder {
+      color: #475569;
+    }
+
+    .login-input:focus {
+      border-color: rgba(59, 130, 246, 0.5);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    .login-input::-webkit-outer-spin-button,
+    .login-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .login-input[type=number] {
+      -moz-appearance: textfield;
+    }
+
+    .login-toggle-password {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 4px;
+      transition: color 0.15s;
+    }
+
+    .login-toggle-password:hover {
+      color: #94a3b8;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 0.9rem;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      margin-top: 0.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+
+    .login-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+    }
+
+    .login-btn:hover::after {
+      opacity: 1;
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
+    }
+
+    .login-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .login-btn .btn-spinner {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .login-btn.loading .btn-spinner {
+      display: inline-block;
+    }
+
+    .login-btn.loading .btn-text {
+      opacity: 0.7;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .login-error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      color: #fca5a5;
+      font-size: 0.8125rem;
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      animation: errorShake 0.4s ease;
+    }
+
+    .login-error.show {
+      display: flex;
+    }
+
+    @keyframes errorShake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    .login-footer {
+      text-align: center;
+      margin-top: 2rem;
+      color: #475569;
+      font-size: 0.75rem;
+    }
+
+    /* ── Change Password Modal ── */
+    .change-pwd-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .change-pwd-overlay.show {
+      display: flex;
+    }
+
+    .change-pwd-card {
+      background: rgba(30, 41, 59, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+      margin: 1rem;
+    }
+
+    .change-pwd-card h3 {
+      color: #f1f5f9;
+      font-size: 1.125rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .change-pwd-card p {
+      color: #94a3b8;
+      font-size: 0.8125rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 480px) {
+      .login-card {
+        padding: 2rem 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body class="login-page">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="login-brand-icon">🏛️</div>
+        <h1>División Sistemas</h1>
+        <p>Sistema de Gestión de Proyectos</p>
+      </div>
+
+      <form class="login-form" id="login-form" autocomplete="off">
+        <div class="login-error" id="login-error">
+          <span>⚠️</span>
+          <span id="login-error-text"></span>
+        </div>
+
+        <div class="login-field">
+          <label for="login-dni">DNI</label>
+          <div class="login-input-wrapper">
+            <span class="login-input-icon">🪪</span>
+            <input
+              type="number"
+              id="login-dni"
+              class="login-input"
+              placeholder="Ingrese su DNI"
+              required
+              autofocus
+              min="1000000"
+              max="9999999999"
+            >
+          </div>
+        </div>
+
+        <div class="login-field">
+          <label for="login-password">Contraseña</label>
+          <div class="login-input-wrapper">
+            <span class="login-input-icon">🔒</span>
+            <input
+              type="password"
+              id="login-password"
+              class="login-input"
+              placeholder="Ingrese su contraseña"
+              required
+              minlength="6"
+            >
+            <button type="button" class="login-toggle-password" id="toggle-password" title="Mostrar/ocultar contraseña">
+              👁️
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="login-btn" id="login-btn">
+          <span class="btn-spinner"></span>
+          <span class="btn-text">Iniciar Sesión</span>
+        </button>
+      </form>
+
+      <div class="login-footer">
+        División Sistemas — Acceso restringido a personal autorizado
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Modal (shown on first login) -->
+  <div class="change-pwd-overlay" id="change-pwd-overlay">
+    <div class="change-pwd-card">
+      <h3>🔐 Cambiar Contraseña</h3>
+      <p>Por seguridad, debe cambiar su contraseña temporal antes de continuar.</p>
+
+      <form class="login-form" id="change-pwd-form">
+        <div class="login-error" id="change-pwd-error">
+          <span>⚠️</span>
+          <span id="change-pwd-error-text"></span>
+        </div>
+
+        <div class="login-field">
+          <label for="change-pwd-current">Contraseña Actual</label>
+          <div class="login-input-wrapper">
+            <span class="login-input-icon">🔑</span>
+            <input type="password" id="change-pwd-current" class="login-input" placeholder="Contraseña actual" required>
+          </div>
+        </div>
+
+        <div class="login-field">
+          <label for="change-pwd-new">Nueva Contraseña</label>
+          <div class="login-input-wrapper">
+            <span class="login-input-icon">🔒</span>
+            <input type="password" id="change-pwd-new" class="login-input" placeholder="Mínimo 6 caracteres" required minlength="6">
+          </div>
+        </div>
+
+        <div class="login-field">
+          <label for="change-pwd-confirm">Confirmar Nueva Contraseña</label>
+          <div class="login-input-wrapper">
+            <span class="login-input-icon">🔒</span>
+            <input type="password" id="change-pwd-confirm" class="login-input" placeholder="Repita la nueva contraseña" required minlength="6">
+          </div>
+        </div>
+
+        <button type="submit" class="login-btn" id="change-pwd-btn">
+          <span class="btn-spinner"></span>
+          <span class="btn-text">Cambiar Contraseña</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/auth.js?v=9"></script>
+  <script>
+    (async () => {
+      // If already authenticated, redirect to app
+      const isAuth = await AuthManager.init();
+      if (isAuth) {
+        const user = AuthManager.getUser();
+        if (user && user.debeCambiarPassword) {
+          document.getElementById('change-pwd-overlay').classList.add('show');
+        } else {
+          window.location.href = 'index.html';
+          return;
+        }
+      }
+
+      // Login form
+      const form = document.getElementById('login-form');
+      const errorDiv = document.getElementById('login-error');
+      const errorText = document.getElementById('login-error-text');
+      const loginBtn = document.getElementById('login-btn');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorDiv.classList.remove('show');
+
+        const dni = document.getElementById('login-dni').value.trim();
+        const password = document.getElementById('login-password').value;
+
+        if (!dni || !password) {
+          errorText.textContent = 'Complete todos los campos.';
+          errorDiv.classList.add('show');
+          return;
+        }
+
+        loginBtn.classList.add('loading');
+        loginBtn.disabled = true;
+
+        const result = await AuthManager.login(dni, password);
+
+        loginBtn.classList.remove('loading');
+        loginBtn.disabled = false;
+
+        if (result.success) {
+          if (result.user.debeCambiarPassword) {
+            document.getElementById('change-pwd-overlay').classList.add('show');
+          } else {
+            window.location.href = 'index.html';
+          }
+        } else {
+          errorText.textContent = result.error;
+          errorDiv.classList.add('show');
+        }
+      });
+
+      // Toggle password visibility
+      document.getElementById('toggle-password').addEventListener('click', () => {
+        const input = document.getElementById('login-password');
+        input.type = input.type === 'password' ? 'text' : 'password';
+      });
+
+      // Change password form
+      const changePwdForm = document.getElementById('change-pwd-form');
+      const changePwdError = document.getElementById('change-pwd-error');
+      const changePwdErrorText = document.getElementById('change-pwd-error-text');
+      const changePwdBtn = document.getElementById('change-pwd-btn');
+
+      changePwdForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        changePwdError.classList.remove('show');
+
+        const current = document.getElementById('change-pwd-current').value;
+        const newPwd = document.getElementById('change-pwd-new').value;
+        const confirm = document.getElementById('change-pwd-confirm').value;
+
+        if (newPwd !== confirm) {
+          changePwdErrorText.textContent = 'Las contraseñas no coinciden.';
+          changePwdError.classList.add('show');
+          return;
+        }
+
+        if (newPwd.length < 6) {
+          changePwdErrorText.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+          changePwdError.classList.add('show');
+          return;
+        }
+
+        changePwdBtn.classList.add('loading');
+        changePwdBtn.disabled = true;
+
+        const result = await AuthManager.changePassword(current, newPwd);
+
+        changePwdBtn.classList.remove('loading');
+        changePwdBtn.disabled = false;
+
+        if (result.success) {
+          window.location.href = 'index.html';
+        } else {
+          changePwdErrorText.textContent = result.error;
+          changePwdError.classList.add('show');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

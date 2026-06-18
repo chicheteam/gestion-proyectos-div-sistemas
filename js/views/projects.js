@@ -43,9 +43,10 @@ const ProjectsView = (() => {
           <button class="btn btn-secondary" onclick="ProjectsView.exportCSV()">
             <i data-lucide="download" style="width:16px;height:16px;"></i> Exportar
           </button>
+          ${AuthManager.hasRole('superadmin', 'admin') ? `
           <button class="btn btn-primary" onclick="ProjectsView.openForm()">
             <i data-lucide="plus" style="width:16px;height:16px;"></i> Nuevo Proyecto
-          </button>
+          </button>` : ''}
         </div>
       </div>
 
@@ -155,7 +156,7 @@ const ProjectsView = (() => {
           <div class="modal-body" id="detail-modal-body"></div>
           <div class="modal-footer">
             <button class="btn btn-ghost" onclick="ProjectsView.closeDetail()">Cerrar</button>
-            <button class="btn btn-primary" id="detail-edit-btn">
+            <button class="btn btn-primary" id="detail-edit-btn" style="display:none;">
               <i data-lucide="pencil" style="width:16px;height:16px;"></i> Editar
             </button>
           </div>
@@ -257,9 +258,9 @@ const ProjectsView = (() => {
               <div class="empty-state-icon">📋</div>
               <h3>No se encontraron proyectos</h3>
               <p>${currentFilter !== 'todos' ? 'No hay proyectos con este filtro.' : 'Creá tu primer proyecto para comenzar.'}</p>
-              <button class="btn btn-primary" onclick="ProjectsView.openForm()">
+              ${AuthManager.hasRole('superadmin', 'admin') ? `<button class="btn btn-primary" onclick="ProjectsView.openForm()">
                 <i data-lucide="plus" style="width:16px;height:16px;"></i> Nuevo Proyecto
-              </button>
+              </button>` : ''}
             </div>
           </td>
         </tr>
@@ -307,17 +308,24 @@ const ProjectsView = (() => {
           </td>
           <td>
             <div class="flex gap-2">
-              ${p.estado !== 'archivado' ? `
-              <button class="btn btn-ghost btn-icon sm" title="Archivar proyecto" onclick="event.stopPropagation(); event.preventDefault(); ProjectsView.archiveProject('${p.id}'); return false;" style="color:var(--text-tertiary); cursor:pointer; position:relative; z-index:2;">
-                <i data-lucide="archive" style="width:14px;height:14px; pointer-events:none;"></i>
-              </button>
-              ` : '<span class="badge badge-status badge-archivado" style="font-size:0.7rem;">Archivado</span>'}
-              <button class="btn btn-ghost btn-icon sm" title="Editar" onclick="event.stopPropagation(); ProjectsView.openForm('${p.id}')">
-                <i data-lucide="pencil" style="width:14px;height:14px;"></i>
-              </button>
-              <button class="btn btn-ghost btn-icon sm" title="Eliminar" onclick="event.stopPropagation(); ProjectsView.openDelete('${p.id}')" style="color:var(--status-red);">
-                <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-              </button>
+              ${(() => {
+                const canEdit = AuthManager.canEditProject(p);
+                const canDelete = AuthManager.hasRole('superadmin', 'admin');
+                if (!canEdit && !canDelete) return '<span style="color:var(--text-muted);font-size:0.7rem;">—</span>';
+                let btns = '';
+                if (canEdit && p.estado !== 'archivado') {
+                  btns += `<button class="btn btn-ghost btn-icon sm" title="Archivar proyecto" onclick="event.stopPropagation(); event.preventDefault(); ProjectsView.archiveProject('${p.id}'); return false;" style="color:var(--text-tertiary); cursor:pointer; position:relative; z-index:2;"><i data-lucide="archive" style="width:14px;height:14px; pointer-events:none;"></i></button>`;
+                } else if (p.estado === 'archivado') {
+                  btns += '<span class="badge badge-status badge-archivado" style="font-size:0.7rem;">Archivado</span>';
+                }
+                if (canEdit) {
+                  btns += `<button class="btn btn-ghost btn-icon sm" title="Editar" onclick="event.stopPropagation(); ProjectsView.openForm('${p.id}')"><i data-lucide="pencil" style="width:14px;height:14px;"></i></button>`;
+                }
+                if (canDelete) {
+                  btns += `<button class="btn btn-ghost btn-icon sm" title="Eliminar" onclick="event.stopPropagation(); ProjectsView.openDelete('${p.id}')" style="color:var(--status-red);"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>`;
+                }
+                return btns;
+              })()}
             </div>
           </td>
         </tr>
@@ -937,11 +945,13 @@ const ProjectsView = (() => {
             <i data-lucide="file-text" style="width:14px;height:14px;color:var(--primary-400);"></i> Minutas, Informes o documentos .PDF
             <span style="background:var(--bg-input);padding:1px 7px;border-radius:10px;font-size:0.68rem;color:var(--text-tertiary);">${(p.minutas || []).length}</span>
           </h4>
+          ${AuthManager.canEditProject(p) ? `
           <button onclick="ProjectsView.toggleMinutaForm('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:0.72rem;padding:4px 10px;">
             <i data-lucide="plus" style="width:12px;height:12px;"></i> Agregar
           </button>
+          ` : ''}
         </div>
-
+ 
         <!-- Add Minuta Form (hidden by default) -->
         <div id="add-minuta-form" style="display:none;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--border-radius-md);padding:14px;margin-bottom:12px;">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -966,7 +976,7 @@ const ProjectsView = (() => {
             </button>
           </div>
         </div>
-
+ 
         <!-- Minutas List -->
         <div id="minutas-list">
           ${(p.minutas || []).length === 0 ? `
@@ -981,17 +991,21 @@ const ProjectsView = (() => {
                 <div style="font-size:0.68rem;color:var(--text-tertiary);">${formatDate(m.fecha)}${m.archivo ? ` · ${m.archivo.nombre}` : ''}</div>
               </div>
               <div style="display:flex;gap:4px;flex-shrink:0;">
+                ${AuthManager.canEditProject(p) ? `
                 <button onclick="ProjectsView.editMinuta('${p.id}','${m.id}')" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:5px;padding:3px 8px;color:var(--primary-400);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Editar"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Editar</button>
+                ` : ''}
                 ${m.archivo ? `
                   <button onclick="ProjectsView.openMinutaPdf('${p.id}','${m.id}')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);border-radius:5px;padding:3px 8px;color:var(--primary-400);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Ver PDF"><i data-lucide="eye" style="width:11px;height:11px;"></i> Ver</button>
                 ` : ''}
+                ${AuthManager.canEditProject(p) ? `
                 <button onclick="ProjectsView.deleteMinuta('${p.id}','${m.id}')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:5px;padding:3px 8px;color:var(--status-red);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Eliminar"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>
+                ` : ''}
               </div>
             </div>
           `).join('')}
         </div>
       </div>
-
+ 
       <!-- Tickets Mantis Section -->
       <div style="margin-top:24px;border-top:1px solid var(--border-subtle);padding-top:20px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -999,11 +1013,13 @@ const ProjectsView = (() => {
             <i data-lucide="bug" style="width:14px;height:14px;color:#f59e0b;"></i> Mantis
             <span style="background:var(--bg-input);padding:1px 7px;border-radius:10px;font-size:0.68rem;color:var(--text-tertiary);">${(p.ticketsMantis || []).length}</span>
           </h4>
+          ${AuthManager.canEditProject(p) ? `
           <button onclick="ProjectsView.toggleTicketForm('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:0.72rem;padding:4px 10px;">
             <i data-lucide="plus" style="width:12px;height:12px;"></i> Agregar
           </button>
+          ` : ''}
         </div>
-
+ 
         <!-- Add Ticket Form (hidden by default) -->
         <div id="add-ticket-form" style="display:none;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--border-radius-md);padding:14px;margin-bottom:12px;">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -1027,7 +1043,7 @@ const ProjectsView = (() => {
             </button>
           </div>
         </div>
-
+ 
         <!-- Tickets List -->
         <div id="tickets-list">
           ${(p.ticketsMantis || []).length === 0 ? `
@@ -1043,13 +1059,15 @@ const ProjectsView = (() => {
               </div>
               <div style="display:flex;gap:4px;flex-shrink:0;">
                 ${t.url ? `<a href="${t.url}" target="_blank" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:5px;padding:3px 8px;color:#f59e0b;font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;text-decoration:none;" title="Abrir en Mantis"><i data-lucide="external-link" style="width:11px;height:11px;"></i> Mantis</a>` : ''}
+                ${AuthManager.canEditProject(p) ? `
                 <button onclick="ProjectsView.deleteTicket('${p.id}','${t.id}')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:5px;padding:3px 8px;color:var(--status-red);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Eliminar"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>
+                ` : ''}
               </div>
             </div>
           `).join('')}
         </div>
       </div>
-
+ 
       <!-- Taiga Section -->
       <div style="margin-top:24px;border-top:1px solid var(--border-subtle);padding-top:20px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -1057,11 +1075,13 @@ const ProjectsView = (() => {
             <i data-lucide="layout" style="width:14px;height:14px;color:#14b8a6;"></i> Taiga
             <span style="background:var(--bg-input);padding:1px 7px;border-radius:10px;font-size:0.68rem;color:var(--text-tertiary);">${(p.ticketsTaiga || []).length}</span>
           </h4>
+          ${AuthManager.canEditProject(p) ? `
           <button onclick="ProjectsView.toggleTaigaForm('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:0.72rem;padding:4px 10px;">
             <i data-lucide="plus" style="width:12px;height:12px;"></i> Agregar
           </button>
+          ` : ''}
         </div>
-
+ 
         <!-- Add Taiga Form (hidden by default) -->
         <div id="add-taiga-form" style="display:none;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--border-radius-md);padding:14px;margin-bottom:12px;">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -1085,7 +1105,7 @@ const ProjectsView = (() => {
             </button>
           </div>
         </div>
-
+ 
         <!-- Taiga List -->
         <div id="taiga-list">
           ${(p.ticketsTaiga || []).length === 0 ? `
@@ -1101,7 +1121,9 @@ const ProjectsView = (() => {
               </div>
               <div style="display:flex;gap:4px;flex-shrink:0;">
                 ${t.url ? `<a href="${t.url}" target="_blank" style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.25);border-radius:5px;padding:3px 8px;color:#14b8a6;font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;text-decoration:none;" title="Abrir en Taiga"><i data-lucide="external-link" style="width:11px;height:11px;"></i> Taiga</a>` : ''}
+                ${AuthManager.canEditProject(p) ? `
                 <button onclick="ProjectsView.deleteTaiga('${p.id}','${t.id}')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:5px;padding:3px 8px;color:var(--status-red);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Eliminar"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>
+                ` : ''}
               </div>
             </div>
           `).join('')}
@@ -1113,6 +1135,11 @@ const ProjectsView = (() => {
       closeDetail();
       setTimeout(() => openForm(projectId), 300);
     };
+
+    // Show edit button only if user can edit this project
+    if (AuthManager.canEditProject(p)) {
+      document.getElementById('detail-edit-btn').style.display = '';
+    }
 
     document.getElementById('detail-modal').classList.add('active');
     if (window.lucide) lucide.createIcons();
