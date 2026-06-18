@@ -2661,3 +2661,749 @@ input:checked + .slider:before {
   pointer-events: none;
   display: none; /* Initially hidden, managed dynamically */
 }
+
+/* ============================================
+   EXECUTIVE DASHBOARD — New Strategic Panels
+   ============================================ */
+
+/* ── 1. Critical Alerts Banner ── */
+.dash-alerts-banner {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(249, 115, 22, 0.06));
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--border-radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  animation: alertPulse 3s ease-in-out infinite;
+}
+
+.dash-alerts-banner.status-ok {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(6, 182, 212, 0.06));
+  border-color: rgba(34, 197, 94, 0.2);
+  animation: none;
+}
+
+@keyframes alertPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  50% { box-shadow: 0 0 16px 0 rgba(239, 68, 68, 0.08); }
+}
+
+.dash-alerts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.dash-alerts-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-alerts-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.dash-alerts-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.dash-alerts-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.dash-alerts-badges {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.dash-alert-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--border-radius-full);
+  white-space: nowrap;
+}
+
+.dash-alert-badge.red {
+  background: var(--status-red-bg);
+  color: var(--status-red);
+}
+
+.dash-alert-badge.orange {
+  background: var(--status-orange-bg);
+  color: var(--status-orange);
+}
+
+.dash-alert-badge.yellow {
+  background: var(--status-yellow-bg);
+  color: var(--status-yellow);
+}
+
+.dash-alert-badge.green {
+  background: var(--status-green-bg);
+  color: var(--status-green);
+}
+
+.dash-alert-badge.blue {
+  background: var(--status-blue-bg);
+  color: var(--status-blue);
+}
+
+.dash-alerts-expand {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  transition: transform 0.2s;
+}
+
+.dash-alerts-expand.open {
+  transform: rotate(180deg);
+}
+
+.dash-alerts-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease;
+}
+
+.dash-alerts-body.open {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.dash-alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 12px;
+}
+
+.dash-alert-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--border-radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.dash-alert-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-subtle);
+}
+
+.dash-alert-item .alert-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.dash-alert-item .alert-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-alert-item .alert-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dash-alert-item .alert-desc {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  margin-top: 1px;
+}
+
+/* ── 2. Executive Summary ── */
+.dash-exec-summary {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-exec-summary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.dash-exec-summary.level-ok::before {
+  background: linear-gradient(90deg, #22c55e, #06b6d4);
+}
+
+.dash-exec-summary.level-warning::before {
+  background: linear-gradient(90deg, #eab308, #f97316);
+}
+
+.dash-exec-summary.level-critical::before {
+  background: linear-gradient(90deg, #ef4444, #f97316);
+}
+
+.dash-exec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.dash-exec-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dash-exec-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: var(--border-radius-full);
+}
+
+.dash-exec-level.ok {
+  background: var(--status-green-bg);
+  color: var(--status-green);
+}
+
+.dash-exec-level.warning {
+  background: var(--status-yellow-bg);
+  color: var(--status-yellow);
+}
+
+.dash-exec-level.critical {
+  background: var(--status-red-bg);
+  color: var(--status-red);
+}
+
+.dash-exec-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.dash-exec-body {
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.dash-exec-body strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.dash-exec-body .highlight-red {
+  color: var(--status-red);
+  font-weight: 600;
+}
+
+.dash-exec-body .highlight-orange {
+  color: var(--status-orange);
+  font-weight: 600;
+}
+
+.dash-exec-body .highlight-green {
+  color: var(--status-green);
+  font-weight: 600;
+}
+
+.dash-exec-copy-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  padding: 6px 12px;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Inter', sans-serif;
+}
+
+.dash-exec-copy-btn:hover {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary-400);
+  border-color: var(--primary-500);
+}
+
+/* ── 3. Traffic Light Indicators ── */
+.dash-semaphore-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.dash-semaphore-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius-lg);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s;
+}
+
+.dash-semaphore-card:hover {
+  border-color: var(--border-medium);
+  transform: translateY(-1px);
+}
+
+.dash-semaphore-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.dash-semaphore-dot.green {
+  background: var(--status-green);
+  color: var(--status-green);
+}
+
+.dash-semaphore-dot.yellow {
+  background: var(--status-yellow);
+  color: var(--status-yellow);
+}
+
+.dash-semaphore-dot.red {
+  background: var(--status-red);
+  color: var(--status-red);
+}
+
+.dash-semaphore-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-semaphore-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-semaphore-value {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* ── 4. Pipeline Visual ── */
+.dash-pipeline {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+
+.dash-pipeline-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-pipeline-flow {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.dash-pipeline-stage {
+  flex: 1;
+  min-width: 90px;
+  text-align: center;
+  padding: 12px 8px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: var(--border-radius-md);
+}
+
+.dash-pipeline-stage:hover {
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateY(-2px);
+}
+
+.dash-pipeline-stage::after {
+  content: '→';
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+  z-index: 1;
+}
+
+.dash-pipeline-stage:last-child::after {
+  display: none;
+}
+
+.dash-pipeline-count {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.dash-pipeline-label {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dash-pipeline-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.dash-pipeline-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* ── 5. Team Heatmap ── */
+.dash-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dash-heatmap-summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.dash-heatmap-summary-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--border-radius-full);
+}
+
+.dash-heatmap-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--border-radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.15s;
+}
+
+.dash-heatmap-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dash-heatmap-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 140px;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-heatmap-bar-container {
+  flex: 1;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.dash-heatmap-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.5s ease, background 0.3s ease;
+}
+
+.dash-heatmap-bar-fill.green { background: linear-gradient(90deg, #22c55e, #4ade80); }
+.dash-heatmap-bar-fill.yellow { background: linear-gradient(90deg, #eab308, #facc15); }
+.dash-heatmap-bar-fill.orange { background: linear-gradient(90deg, #f97316, #fb923c); }
+.dash-heatmap-bar-fill.red { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+.dash-heatmap-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  min-width: 50px;
+  text-align: right;
+}
+
+.dash-heatmap-count.green { color: var(--status-green); }
+.dash-heatmap-count.yellow { color: var(--status-yellow); }
+.dash-heatmap-count.orange { color: var(--status-orange); }
+.dash-heatmap-count.red { color: var(--status-red); }
+
+.dash-heatmap-label {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  min-width: 80px;
+}
+
+/* ── 6. Enhanced Deadlines Table ── */
+.dash-deadlines-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dash-deadlines-table th {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.dash-deadlines-table td {
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.06);
+  vertical-align: middle;
+}
+
+.dash-deadlines-table tr {
+  transition: background 0.15s;
+}
+
+.dash-deadlines-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dash-deadline-risk {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--border-radius-full);
+}
+
+.dash-deadline-risk.overdue {
+  background: var(--status-red-bg);
+  color: var(--status-red);
+}
+
+.dash-deadline-risk.urgent {
+  background: var(--status-orange-bg);
+  color: var(--status-orange);
+}
+
+.dash-deadline-risk.ontrack {
+  background: var(--status-green-bg);
+  color: var(--status-green);
+}
+
+.dash-deadline-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dash-deadline-progress-bar {
+  width: 60px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dash-deadline-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.dash-deadline-progress-text {
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 32px;
+}
+
+/* ── 7. Throughput KPIs ── */
+.dash-throughput-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.dash-throughput-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(99, 102, 241, 0.08);
+  border-radius: var(--border-radius-md);
+  padding: 14px 16px;
+  transition: all 0.2s;
+}
+
+.dash-throughput-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-subtle);
+}
+
+.dash-throughput-card-icon {
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+}
+
+.dash-throughput-card-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: 3px;
+}
+
+.dash-throughput-card-label {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.dash-throughput-card-trend {
+  font-size: 0.68rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* ── At-Risk Projects List ── */
+.dash-risk-project {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--border-radius-md);
+  background: rgba(239, 68, 68, 0.04);
+  border: 1px solid rgba(239, 68, 68, 0.1);
+  margin-bottom: 6px;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.dash-risk-project:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.dash-risk-project .risk-gauge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.dash-risk-project .risk-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-risk-project .risk-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-risk-project .risk-detail {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  margin-top: 1px;
+}
+
+/* ── Responsive for new panels ── */
+@media (max-width: 768px) {
+  .dash-semaphore-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dash-pipeline-flow {
+    flex-wrap: wrap;
+  }
+
+  .dash-pipeline-stage {
+    min-width: 80px;
+    flex: 0 0 calc(33.33% - 2px);
+  }
+
+  .dash-pipeline-stage::after {
+    display: none;
+  }
+
+  .dash-heatmap-name {
+    min-width: 100px;
+    max-width: 120px;
+  }
+
+  .dash-throughput-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
