@@ -165,7 +165,7 @@ const NotificationsEngine = (() => {
         // Proyecto activo sin equipo asignado
         const activeDevStates = ['desarrollo', 'testing'];
         if (activeDevStates.includes(p.estado)) {
-          const hasTeam = p.pm || p.liderTecnico || p.scrumMaster || p.productOwner || (p.desarrolladores && p.desarrolladores.length > 0);
+          const hasTeam = p.pm || p.liderTecnico || p.scrumMaster || p.productOwner || p.analistaFuncional || p.qaTester || p.dba || p.uxuiDesigner || (p.desarrolladores && p.desarrolladores.length > 0);
           if (!hasTeam) {
             alerts.push({
               type: 'warning',

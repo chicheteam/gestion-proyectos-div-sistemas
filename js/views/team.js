@@ -299,7 +299,17 @@ const TeamView = (() => {
         ${w.assignedProjects.length > 0 ? `
           <div class="team-card-projects">
             <div class="team-card-projects-title">Proyectos Activos</div>
-            ${w.assignedProjects.map(p => {
+            ${[...w.assignedProjects].sort((a, b) => {
+              const stateOrder = { 'testing': 1, 'desarrollo': 2, 'analisis': 3 };
+              const aState = stateOrder[a.estado] || 99;
+              const bState = stateOrder[b.estado] || 99;
+              if (aState !== bState) return aState - bState;
+              
+              const prioOrder = { 'critica': 1, 'alta': 2, 'media': 3, 'baja': 4 };
+              const aPrio = prioOrder[a.prioridad] || 99;
+              const bPrio = prioOrder[b.prioridad] || 99;
+              return aPrio - bPrio;
+            }).map(p => {
               const statusInfo = DataStore.getStatusInfo(p.estado);
               const prioInfo = DataStore.getPriorityInfo(p.prioridad);
               return `
@@ -653,6 +663,10 @@ const TeamView = (() => {
       if (p.liderTecnico === memberId) assigned.push({ project: p, roleKey: 'liderTecnico', roleName: 'Líder Técnico' });
       if (p.scrumMaster === memberId) assigned.push({ project: p, roleKey: 'scrumMaster', roleName: 'Scrum Master' });
       if (p.productOwner === memberId) assigned.push({ project: p, roleKey: 'productOwner', roleName: 'Product Owner' });
+      if (p.analistaFuncional === memberId) assigned.push({ project: p, roleKey: 'analistaFuncional', roleName: 'Analista Funcional' });
+      if (p.qaTester === memberId) assigned.push({ project: p, roleKey: 'qaTester', roleName: 'QA / Tester' });
+      if (p.dba === memberId) assigned.push({ project: p, roleKey: 'dba', roleName: 'DBA' });
+      if (p.uxuiDesigner === memberId) assigned.push({ project: p, roleKey: 'uxuiDesigner', roleName: 'UX/UI Designer' });
       if (p.desarrolladores && p.desarrolladores.includes(memberId)) {
         assigned.push({ project: p, roleKey: 'desarrollador', roleName: member.rol || 'Desarrollador' });
       }
@@ -827,7 +841,7 @@ const TeamView = (() => {
     const project = DataStore.getProjectById(projectId);
     if (!project) return;
 
-    const leadershipKeys = ['pm', 'liderTecnico', 'scrumMaster', 'productOwner'];
+    const leadershipKeys = ['pm', 'liderTecnico', 'scrumMaster', 'productOwner', 'analistaFuncional', 'qaTester', 'dba', 'uxuiDesigner'];
     if (!leadershipKeys.includes(roleKey)) {
       const devs = project.desarrolladores || [];
       if (devs.includes(memberId)) {
@@ -862,7 +876,7 @@ const TeamView = (() => {
     const project = DataStore.getProjectById(projectId);
     if (!project) return;
 
-    const leadershipKeys = ['pm', 'liderTecnico', 'scrumMaster', 'productOwner'];
+    const leadershipKeys = ['pm', 'liderTecnico', 'scrumMaster', 'productOwner', 'analistaFuncional', 'qaTester', 'dba', 'uxuiDesigner'];
     if (!leadershipKeys.includes(roleKey)) {
       const devs = (project.desarrolladores || []).filter(id => id !== memberId);
       DataStore.updateProject(projectId, { desarrolladores: devs });
@@ -889,7 +903,7 @@ const TeamView = (() => {
     const targetMember = DataStore.getTeamMemberById(targetMemberId);
     const targetName = targetMember ? `${targetMember.nombre} ${targetMember.apellido}` : 'otro integrante';
 
-    const leadershipKeys = ['pm', 'liderTecnico', 'scrumMaster', 'productOwner'];
+    const leadershipKeys = ['pm', 'liderTecnico', 'scrumMaster', 'productOwner', 'analistaFuncional', 'qaTester', 'dba', 'uxuiDesigner'];
     if (!leadershipKeys.includes(roleKey)) {
       // Remove current from desarrolladores
       const devs = (project.desarrolladores || []).filter(id => id !== memberId);

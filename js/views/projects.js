@@ -617,6 +617,40 @@ const ProjectsView = (() => {
           </div>
         </div>
 
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Analista Funcional</label>
+            <select class="form-select" id="form-analistaFuncional">
+              <option value="">— Sin asignar —</option>
+              ${teamOptions}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">QA / Tester</label>
+            <select class="form-select" id="form-qaTester">
+              <option value="">— Sin asignar —</option>
+              ${teamOptions}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">DBA</label>
+            <select class="form-select" id="form-dba">
+              <option value="">— Sin asignar —</option>
+              ${teamOptions}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">UX/UI Designer</label>
+            <select class="form-select" id="form-uxuiDesigner">
+              <option value="">— Sin asignar —</option>
+              ${teamOptions}
+            </select>
+          </div>
+        </div>
+
         <div class="form-group">
           <label class="form-label">Otros Integrantes Asignados</label>
           <div style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--border-radius-md);padding:10px 14px;max-height:160px;overflow-y:auto;">
@@ -674,7 +708,7 @@ const ProjectsView = (() => {
 
     // Set selected values for selects
     if (project) {
-      const fields = ['pm', 'liderTecnico', 'scrumMaster', 'productOwner'];
+      const fields = ['pm', 'liderTecnico', 'scrumMaster', 'productOwner', 'analistaFuncional', 'qaTester', 'dba', 'uxuiDesigner'];
       fields.forEach(f => {
         const sel = document.getElementById('form-' + f);
         if (sel && project[f]) sel.value = project[f];
@@ -723,6 +757,10 @@ const ProjectsView = (() => {
       liderTecnico: document.getElementById('form-liderTecnico').value,
       scrumMaster: document.getElementById('form-scrumMaster').value,
       productOwner: document.getElementById('form-productOwner').value,
+      analistaFuncional: document.getElementById('form-analistaFuncional').value,
+      qaTester: document.getElementById('form-qaTester').value,
+      dba: document.getElementById('form-dba').value,
+      uxuiDesigner: document.getElementById('form-uxuiDesigner').value,
       desarrolladores,
       fechaSolicitud: document.getElementById('form-fechaSolicitud').value,
       fechaEstimadaInicio: document.getElementById('form-fechaEstimadaInicio').value,
@@ -813,7 +851,11 @@ const ProjectsView = (() => {
       { key: 'pm', label: 'PM' },
       { key: 'liderTecnico', label: 'Líder Técnico' },
       { key: 'scrumMaster', label: 'Scrum Master' },
-      { key: 'productOwner', label: 'Product Owner' }
+      { key: 'productOwner', label: 'Product Owner' },
+      { key: 'analistaFuncional', label: 'Analista Funcional' },
+      { key: 'qaTester', label: 'QA / Tester' },
+      { key: 'dba', label: 'DBA' },
+      { key: 'uxuiDesigner', label: 'UX/UI Designer' }
     ];
 
     fixedRoles.forEach(r => {
@@ -1123,6 +1165,130 @@ const ProjectsView = (() => {
                 ${t.url ? `<a href="${t.url}" target="_blank" style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.25);border-radius:5px;padding:3px 8px;color:#14b8a6;font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;text-decoration:none;" title="Abrir en Taiga"><i data-lucide="external-link" style="width:11px;height:11px;"></i> Taiga</a>` : ''}
                 ${AuthManager.canEditProject(p) ? `
                 <button onclick="ProjectsView.deleteTaiga('${p.id}','${t.id}')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:5px;padding:3px 8px;color:var(--status-red);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Eliminar"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>
+                ` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Jira Section -->
+      <div style="margin-top:24px;border-top:1px solid var(--border-subtle);padding-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h4 style="font-size:0.75rem;color:var(--text-tertiary);text-transform:uppercase;display:flex;align-items:center;gap:6px;">
+            <i data-lucide="trello" style="width:14px;height:14px;color:#2684ff;"></i> Jira
+            <span style="background:var(--bg-input);padding:1px 7px;border-radius:10px;font-size:0.68rem;color:var(--text-tertiary);">${(p.ticketsJira || []).length}</span>
+          </h4>
+          ${AuthManager.canEditProject(p) ? `
+          <button onclick="ProjectsView.toggleJiraForm('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:0.72rem;padding:4px 10px;">
+            <i data-lucide="plus" style="width:12px;height:12px;"></i> Agregar
+          </button>
+          ` : ''}
+        </div>
+
+        <!-- Add Jira Form (hidden by default) -->
+        <div id="add-jira-form" style="display:none;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--border-radius-md);padding:14px;margin-bottom:12px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+              <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">URL de Jira</label>
+              <input type="url" class="form-input" id="jira-url" placeholder="https://jira.ejemplo.com/browse/PROJ-123" style="font-size:0.8rem;">
+            </div>
+            <div>
+              <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Fecha</label>
+              <input type="date" class="form-input" id="jira-fecha" value="${new Date().toISOString().split('T')[0]}" style="font-size:0.8rem;">
+            </div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Descripción breve <span style="color:var(--status-red);">*</span></label>
+            <input type="text" class="form-input" id="jira-descripcion" placeholder="Ej: Ticket de Jira o tarea" style="font-size:0.8rem;">
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onclick="ProjectsView.toggleJiraForm()" class="btn btn-ghost btn-sm" style="font-size:0.72rem;">Cancelar</button>
+            <button onclick="ProjectsView.saveJira('${p.id}')" class="btn btn-primary btn-sm" style="font-size:0.72rem;">
+              <i data-lucide="save" style="width:12px;height:12px;"></i> Guardar Enlace
+            </button>
+          </div>
+        </div>
+
+        <!-- Jira List -->
+        <div id="jira-list">
+          ${(p.ticketsJira || []).length === 0 ? `
+            <div style="text-align:center;padding:16px;color:var(--text-tertiary);font-size:0.78rem;">Sin enlaces de Jira cargados</div>
+          ` : (p.ticketsJira || []).sort((a, b) => b.fecha.localeCompare(a.fecha)).map(t => `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(38,132,255,0.04);border:1px solid var(--border-subtle);border-radius:8px;margin-bottom:6px;">
+              <div style="flex-shrink:0;width:32px;height:32px;background:rgba(38,132,255,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                <i data-lucide="trello" style="width:16px;height:16px;color:#2684ff;"></i>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:0.8rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.descripcion}</div>
+                <div style="font-size:0.68rem;color:var(--text-tertiary);">${formatDate(t.fecha)}${t.url ? ` · <a href="${t.url}" target="_blank" style="color:#2684ff;">Jira ↗</a>` : ''}</div>
+              </div>
+              <div style="display:flex;gap:4px;flex-shrink:0;">
+                ${t.url ? `<a href="${t.url}" target="_blank" style="background:rgba(38,132,255,0.1);border:1px solid rgba(38,132,255,0.25);border-radius:5px;padding:3px 8px;color:#2684ff;font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;text-decoration:none;" title="Abrir en Jira"><i data-lucide="external-link" style="width:11px;height:11px;"></i> Jira</a>` : ''}
+                ${AuthManager.canEditProject(p) ? `
+                <button onclick="ProjectsView.deleteJira('${p.id}','${t.id}')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:5px;padding:3px 8px;color:var(--status-red);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Eliminar"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>
+                ` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- GitLab Section -->
+      <div style="margin-top:24px;border-top:1px solid var(--border-subtle);padding-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h4 style="font-size:0.75rem;color:var(--text-tertiary);text-transform:uppercase;display:flex;align-items:center;gap:6px;">
+            <i data-lucide="git-branch" style="width:14px;height:14px;color:#fc6d26;"></i> GitLab
+            <span style="background:var(--bg-input);padding:1px 7px;border-radius:10px;font-size:0.68rem;color:var(--text-tertiary);">${(p.ticketsGitlab || []).length}</span>
+          </h4>
+          ${AuthManager.canEditProject(p) ? `
+          <button onclick="ProjectsView.toggleGitlabForm('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:0.72rem;padding:4px 10px;">
+            <i data-lucide="plus" style="width:12px;height:12px;"></i> Agregar
+          </button>
+          ` : ''}
+        </div>
+
+        <!-- Add GitLab Form (hidden by default) -->
+        <div id="add-gitlab-form" style="display:none;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--border-radius-md);padding:14px;margin-bottom:12px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+              <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">URL de GitLab</label>
+              <input type="url" class="form-input" id="gitlab-url" placeholder="https://gitlab.ejemplo.com/..." style="font-size:0.8rem;">
+            </div>
+            <div>
+              <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Fecha</label>
+              <input type="date" class="form-input" id="gitlab-fecha" value="${new Date().toISOString().split('T')[0]}" style="font-size:0.8rem;">
+            </div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="font-size:0.72rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Descripción breve <span style="color:var(--status-red);">*</span></label>
+            <input type="text" class="form-input" id="gitlab-descripcion" placeholder="Ej: Merge request, Issue o repositorio" style="font-size:0.8rem;">
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onclick="ProjectsView.toggleGitlabForm()" class="btn btn-ghost btn-sm" style="font-size:0.72rem;">Cancelar</button>
+            <button onclick="ProjectsView.saveGitlab('${p.id}')" class="btn btn-primary btn-sm" style="font-size:0.72rem;">
+              <i data-lucide="save" style="width:12px;height:12px;"></i> Guardar Enlace
+            </button>
+          </div>
+        </div>
+
+        <!-- GitLab List -->
+        <div id="gitlab-list">
+          ${(p.ticketsGitlab || []).length === 0 ? `
+            <div style="text-align:center;padding:16px;color:var(--text-tertiary);font-size:0.78rem;">Sin enlaces de GitLab cargados</div>
+          ` : (p.ticketsGitlab || []).sort((a, b) => b.fecha.localeCompare(a.fecha)).map(t => `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(252,109,38,0.04);border:1px solid var(--border-subtle);border-radius:8px;margin-bottom:6px;">
+              <div style="flex-shrink:0;width:32px;height:32px;background:rgba(252,109,38,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                <i data-lucide="git-branch" style="width:16px;height:16px;color:#fc6d26;"></i>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:0.8rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.descripcion}</div>
+                <div style="font-size:0.68rem;color:var(--text-tertiary);">${formatDate(t.fecha)}${t.url ? ` · <a href="${t.url}" target="_blank" style="color:#fc6d26;">GitLab ↗</a>` : ''}</div>
+              </div>
+              <div style="display:flex;gap:4px;flex-shrink:0;">
+                ${t.url ? `<a href="${t.url}" target="_blank" style="background:rgba(252,109,38,0.1);border:1px solid rgba(252,109,38,0.25);border-radius:5px;padding:3px 8px;color:#fc6d26;font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;text-decoration:none;" title="Abrir en GitLab"><i data-lucide="external-link" style="width:11px;height:11px;"></i> GitLab</a>` : ''}
+                ${AuthManager.canEditProject(p) ? `
+                <button onclick="ProjectsView.deleteGitlab('${p.id}','${t.id}')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:5px;padding:3px 8px;color:var(--status-red);font-size:0.68rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Eliminar"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>
                 ` : ''}
               </div>
             </div>
@@ -1465,6 +1631,66 @@ const ProjectsView = (() => {
     }
   }
 
+  /* ── Jira ── */
+  function toggleJiraForm() {
+    const form = document.getElementById('add-jira-form');
+    if (!form) return;
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function saveJira(projectId) {
+    const descripcion = document.getElementById('jira-descripcion').value.trim();
+    const fecha = document.getElementById('jira-fecha').value;
+    const url = document.getElementById('jira-url').value.trim();
+    
+    if (!descripcion) {
+      App.showToast('La descripción es requerida', 'error');
+      return;
+    }
+    
+    DataStore.addTicketJira(projectId, { descripcion, fecha, url });
+    App.showToast('Enlace Jira guardado', 'success');
+    showDetail(projectId);
+  }
+
+  function deleteJira(projectId, ticketId) {
+    if (confirm('¿Eliminar este enlace de Jira?')) {
+      DataStore.removeTicketJira(projectId, ticketId);
+      App.showToast('Enlace Jira eliminado', 'success');
+      showDetail(projectId);
+    }
+  }
+
+  /* ── GitLab ── */
+  function toggleGitlabForm() {
+    const form = document.getElementById('add-gitlab-form');
+    if (!form) return;
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function saveGitlab(projectId) {
+    const descripcion = document.getElementById('gitlab-descripcion').value.trim();
+    const fecha = document.getElementById('gitlab-fecha').value;
+    const url = document.getElementById('gitlab-url').value.trim();
+    
+    if (!descripcion) {
+      App.showToast('La descripción es requerida', 'error');
+      return;
+    }
+    
+    DataStore.addTicketGitlab(projectId, { descripcion, fecha, url });
+    App.showToast('Enlace GitLab guardado', 'success');
+    showDetail(projectId);
+  }
+
+  function deleteGitlab(projectId, ticketId) {
+    if (confirm('¿Eliminar este enlace de GitLab?')) {
+      DataStore.removeTicketGitlab(projectId, ticketId);
+      App.showToast('Enlace GitLab eliminado', 'success');
+      showDetail(projectId);
+    }
+  }
+
   return {
     render,
     setFilter,
@@ -1497,6 +1723,12 @@ const ProjectsView = (() => {
     deleteTicket,
     toggleTaigaForm,
     saveTaiga,
-    deleteTaiga
+    deleteTaiga,
+    toggleJiraForm,
+    saveJira,
+    deleteJira,
+    toggleGitlabForm,
+    saveGitlab,
+    deleteGitlab
   };
 })();

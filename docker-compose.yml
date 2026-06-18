@@ -35,6 +35,8 @@ services:
     container_name: frontend-web
     ports:
       - "80:80"
+    volumes:
+      - ./img:/usr/share/nginx/html/img
     depends_on:
       - backend-api
     restart: always

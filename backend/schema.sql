@@ -36,6 +36,10 @@ CREATE TABLE PROYECTOS (
     LIDER_TECNICO VARCHAR2(50),       -- References EQUIPO.ID
     SCRUM_MASTER VARCHAR2(50),        -- References EQUIPO.ID
     PRODUCT_OWNER VARCHAR2(50),       -- References EQUIPO.ID
+    ANALISTA_FUNCIONAL VARCHAR2(50),   -- References EQUIPO.ID
+    QA_TESTER VARCHAR2(50),            -- References EQUIPO.ID
+    DBA_ASIGNADO VARCHAR2(50),         -- References EQUIPO.ID
+    UXUI_DESIGNER VARCHAR2(50),        -- References EQUIPO.ID
     DESARROLLADORES CLOB,             -- JSON string array of team member IDs
     FECHA_SOLICITUD VARCHAR2(10),
     FECHA_ESTIMADA_INICIO VARCHAR2(10),
@@ -48,6 +52,8 @@ CREATE TABLE PROYECTOS (
     MINUTAS CLOB,                     -- JSON string array of minuta objects
     TICKETS_MANTIS CLOB,              -- JSON string array of Mantis ticket objects
     TICKETS_TAIGA CLOB,               -- JSON string array of Taiga ticket objects
+    TICKETS_JIRA CLOB,                -- JSON string array of Jira ticket objects
+    TICKETS_GITLAB CLOB,              -- JSON string array of GitLab ticket/link objects
     KANBAN_PINNED NUMBER(1) DEFAULT 0, -- 0 = False, 1 = True
     CREATED_AT VARCHAR2(30),
     UPDATED_AT VARCHAR2(30)

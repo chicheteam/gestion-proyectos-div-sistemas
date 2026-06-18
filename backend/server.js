@@ -70,6 +70,10 @@ function mapProjectFromDb(row) {
     liderTecnico: row.LIDER_TECNICO || '',
     scrumMaster: row.SCRUM_MASTER || '',
     productOwner: row.PRODUCT_OWNER || '',
+    analistaFuncional: row.ANALISTA_FUNCIONAL || '',
+    qaTester: row.QA_TESTER || '',
+    dba: row.DBA_ASIGNADO || '',
+    uxuiDesigner: row.UXUI_DESIGNER || '',
     desarrolladores: row.DESARROLLADORES ? JSON.parse(row.DESARROLLADORES) : [],
     fechaSolicitud: row.FECHA_SOLICITUD || '',
     fechaEstimadaInicio: row.FECHA_ESTIMADA_INICIO || '',
@@ -82,6 +86,8 @@ function mapProjectFromDb(row) {
     minutas: row.MINUTAS ? JSON.parse(row.MINUTAS) : [],
     ticketsMantis: row.TICKETS_MANTIS ? JSON.parse(row.TICKETS_MANTIS) : [],
     ticketsTaiga: row.TICKETS_TAIGA ? JSON.parse(row.TICKETS_TAIGA) : [],
+    ticketsJira: row.TICKETS_JIRA ? JSON.parse(row.TICKETS_JIRA) : [],
+    ticketsGitlab: row.TICKETS_GITLAB ? JSON.parse(row.TICKETS_GITLAB) : [],
     kanbanPinned: row.KANBAN_PINNED === 1,
     createdAt: row.CREATED_AT || '',
     updatedAt: row.UPDATED_AT || ''
@@ -154,13 +160,15 @@ app.post('/api/projects', authMiddleware, authorize('superadmin', 'admin'), asyn
       INSERT INTO PROYECTOS (
         ID, NOMBRE, DESCRIPCION, EXPEDIENTE, NOTA_SOLICITUD, NOTA_SOLICITUD_PDF, AREA_SOLICITANTE, LINK_DOCUMENTO,
         ESTADO, PRIORIDAD, DIFICULTAD, PORCENTAJE_AVANCE, SPRINT_ACTUAL, PM, LIDER_TECNICO, SCRUM_MASTER, PRODUCT_OWNER,
+        ANALISTA_FUNCIONAL, QA_TESTER, DBA_ASIGNADO, UXUI_DESIGNER,
         DESARROLLADORES, FECHA_SOLICITUD, FECHA_ESTIMADA_INICIO, FECHA_ESTIMADA_FIN, FECHA_REAL_INICIO, FECHA_REAL_FIN, FECHA_PRODUCCION,
-        TAGS, OBSERVACIONES, MINUTAS, TICKETS_MANTIS, TICKETS_TAIGA, KANBAN_PINNED, CREATED_AT, UPDATED_AT
+        TAGS, OBSERVACIONES, MINUTAS, TICKETS_MANTIS, TICKETS_TAIGA, TICKETS_JIRA, TICKETS_GITLAB, KANBAN_PINNED, CREATED_AT, UPDATED_AT
       ) VALUES (
         :id, :nombre, :descripcion, :expediente, :notaSolicitud, :notaSolicitudPdf, :areaSolicitante, :linkDocumento,
         :estado, :prioridad, :dificultad, :porcentajeAvance, :sprintActual, :pm, :liderTecnico, :scrumMaster, :productOwner,
+        :analistaFuncional, :qaTester, :dba, :uxuiDesigner,
         :desarrolladores, :fechaSolicitud, :fechaEstimadaInicio, :fechaEstimadaFin, :fechaRealInicio, :fechaRealFin, :fechaProduccion,
-        :tags, :observaciones, :minutas, :ticketsMantis, :ticketsTaiga, :kanbanPinned, :createdAt, :updatedAt
+        :tags, :observaciones, :minutas, :ticketsMantis, :ticketsTaiga, :ticketsJira, :ticketsGitlab, :kanbanPinned, :createdAt, :updatedAt
       )
     `;
 
@@ -182,6 +190,10 @@ app.post('/api/projects', authMiddleware, authorize('superadmin', 'admin'), asyn
       liderTecnico: p.liderTecnico || '',
       scrumMaster: p.scrumMaster || '',
       productOwner: p.productOwner || '',
+      analistaFuncional: p.analistaFuncional || '',
+      qaTester: p.qaTester || '',
+      dba: p.dba || '',
+      uxuiDesigner: p.uxuiDesigner || '',
       desarrolladores: { type: db.oracledb.CLOB, val: JSON.stringify(p.desarrolladores || []) },
       fechaSolicitud: p.fechaSolicitud || '',
       fechaEstimadaInicio: p.fechaEstimadaInicio || '',
@@ -194,6 +206,8 @@ app.post('/api/projects', authMiddleware, authorize('superadmin', 'admin'), asyn
       minutas: { type: db.oracledb.CLOB, val: JSON.stringify(p.minutas || []) },
       ticketsMantis: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsMantis || []) },
       ticketsTaiga: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsTaiga || []) },
+      ticketsJira: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsJira || []) },
+      ticketsGitlab: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsGitlab || []) },
       kanbanPinned: p.kanbanPinned ? 1 : 0,
       createdAt: p.createdAt || new Date().toISOString(),
       updatedAt: p.updatedAt || new Date().toISOString()
@@ -237,6 +251,10 @@ app.put('/api/projects/:id', authMiddleware, authorize('superadmin', 'admin', 'c
         LIDER_TECNICO = :liderTecnico,
         SCRUM_MASTER = :scrumMaster,
         PRODUCT_OWNER = :productOwner,
+        ANALISTA_FUNCIONAL = :analistaFuncional,
+        QA_TESTER = :qaTester,
+        DBA_ASIGNADO = :dba,
+        UXUI_DESIGNER = :uxuiDesigner,
         DESARROLLADORES = :desarrolladores,
         FECHA_SOLICITUD = :fechaSolicitud,
         FECHA_ESTIMADA_INICIO = :fechaEstimadaInicio,
@@ -249,6 +267,8 @@ app.put('/api/projects/:id', authMiddleware, authorize('superadmin', 'admin', 'c
         MINUTAS = :minutas,
         TICKETS_MANTIS = :ticketsMantis,
         TICKETS_TAIGA = :ticketsTaiga,
+        TICKETS_JIRA = :ticketsJira,
+        TICKETS_GITLAB = :ticketsGitlab,
         KANBAN_PINNED = :kanbanPinned,
         UPDATED_AT = :updatedAt
       WHERE ID = :id
@@ -279,6 +299,10 @@ app.put('/api/projects/:id', authMiddleware, authorize('superadmin', 'admin', 'c
       liderTecnico: p.liderTecnico || '',
       scrumMaster: p.scrumMaster || '',
       productOwner: p.productOwner || '',
+      analistaFuncional: p.analistaFuncional || '',
+      qaTester: p.qaTester || '',
+      dba: p.dba || '',
+      uxuiDesigner: p.uxuiDesigner || '',
       desarrolladores: { type: db.oracledb.CLOB, val: JSON.stringify(p.desarrolladores || []) },
       fechaSolicitud: p.fechaSolicitud || '',
       fechaEstimadaInicio: p.fechaEstimadaInicio || '',
@@ -291,6 +315,8 @@ app.put('/api/projects/:id', authMiddleware, authorize('superadmin', 'admin', 'c
       minutas: { type: db.oracledb.CLOB, val: JSON.stringify(p.minutas || []) },
       ticketsMantis: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsMantis || []) },
       ticketsTaiga: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsTaiga || []) },
+      ticketsJira: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsJira || []) },
+      ticketsGitlab: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsGitlab || []) },
       kanbanPinned: p.kanbanPinned ? 1 : 0,
       updatedAt: new Date().toISOString()
     };
@@ -546,13 +572,15 @@ app.post('/api/migrate', authMiddleware, authorize('superadmin'), async (req, re
           INSERT INTO PROYECTOS (
             ID, NOMBRE, DESCRIPCION, EXPEDIENTE, NOTA_SOLICITUD, NOTA_SOLICITUD_PDF, AREA_SOLICITANTE, LINK_DOCUMENTO,
             ESTADO, PRIORIDAD, DIFICULTAD, PORCENTAJE_AVANCE, SPRINT_ACTUAL, PM, LIDER_TECNICO, SCRUM_MASTER, PRODUCT_OWNER,
+            ANALISTA_FUNCIONAL, QA_TESTER, DBA_ASIGNADO, UXUI_DESIGNER,
             DESARROLLADORES, FECHA_SOLICITUD, FECHA_ESTIMADA_INICIO, FECHA_ESTIMADA_FIN, FECHA_REAL_INICIO, FECHA_REAL_FIN, FECHA_PRODUCCION,
-            TAGS, OBSERVACIONES, MINUTAS, TICKETS_MANTIS, TICKETS_TAIGA, KANBAN_PINNED, CREATED_AT, UPDATED_AT
+            TAGS, OBSERVACIONES, MINUTAS, TICKETS_MANTIS, TICKETS_TAIGA, TICKETS_JIRA, TICKETS_GITLAB, KANBAN_PINNED, CREATED_AT, UPDATED_AT
           ) VALUES (
             :id, :nombre, :descripcion, :expediente, :notaSolicitud, :notaSolicitudPdf, :areaSolicitante, :linkDocumento,
             :estado, :prioridad, :dificultad, :porcentajeAvance, :sprintActual, :pm, :liderTecnico, :scrumMaster, :productOwner,
+            :analistaFuncional, :qaTester, :dba, :uxuiDesigner,
             :desarrolladores, :fechaSolicitud, :fechaEstimadaInicio, :fechaEstimadaFin, :fechaRealInicio, :fechaRealFin, :fechaProduccion,
-            :tags, :observaciones, :minutas, :ticketsMantis, :ticketsTaiga, :kanbanPinned, :createdAt, :updatedAt
+            :tags, :observaciones, :minutas, :ticketsMantis, :ticketsTaiga, :ticketsJira, :ticketsGitlab, :kanbanPinned, :createdAt, :updatedAt
           )
         `;
         await db.execute(query, {
@@ -573,6 +601,10 @@ app.post('/api/migrate', authMiddleware, authorize('superadmin'), async (req, re
           liderTecnico: p.liderTecnico || '',
           scrumMaster: p.scrumMaster || '',
           productOwner: p.productOwner || '',
+          analistaFuncional: p.analistaFuncional || '',
+          qaTester: p.qaTester || '',
+          dba: p.dba || '',
+          uxuiDesigner: p.uxuiDesigner || '',
           desarrolladores: { type: db.oracledb.CLOB, val: JSON.stringify(p.desarrolladores || []) },
           fechaSolicitud: p.fechaSolicitud || '',
           fechaEstimadaInicio: p.fechaEstimadaInicio || '',
@@ -585,6 +617,8 @@ app.post('/api/migrate', authMiddleware, authorize('superadmin'), async (req, re
           minutas: { type: db.oracledb.CLOB, val: JSON.stringify(p.minutas || []) },
           ticketsMantis: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsMantis || []) },
           ticketsTaiga: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsTaiga || []) },
+          ticketsJira: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsJira || []) },
+          ticketsGitlab: { type: db.oracledb.CLOB, val: JSON.stringify(p.ticketsGitlab || []) },
           kanbanPinned: p.kanbanPinned ? 1 : 0,
           createdAt: p.createdAt || new Date().toISOString(),
           updatedAt: p.updatedAt || new Date().toISOString()

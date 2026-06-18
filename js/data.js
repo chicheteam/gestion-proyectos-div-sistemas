@@ -223,6 +223,10 @@ const DataStore = (() => {
       liderTecnico: projectData.liderTecnico || '',
       scrumMaster: projectData.scrumMaster || '',
       productOwner: projectData.productOwner || '',
+      analistaFuncional: projectData.analistaFuncional || '',
+      qaTester: projectData.qaTester || '',
+      dba: projectData.dba || '',
+      uxuiDesigner: projectData.uxuiDesigner || '',
       desarrolladores: projectData.desarrolladores || [],
       fechaSolicitud: projectData.fechaSolicitud || new Date().toISOString().split('T')[0],
       fechaEstimadaInicio: projectData.fechaEstimadaInicio || '',
@@ -234,6 +238,8 @@ const DataStore = (() => {
       minutas: projectData.minutas || [],
       ticketsMantis: projectData.ticketsMantis || [],
       ticketsTaiga: projectData.ticketsTaiga || [],
+      ticketsJira: projectData.ticketsJira || [],
+      ticketsGitlab: projectData.ticketsGitlab || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -482,6 +488,86 @@ const DataStore = (() => {
     return true;
   }
 
+  function addTicketJira(projectId, ticketData) {
+    const p = cachedProjects.find(p => p.id === projectId);
+    if (!p) return null;
+    if (!p.ticketsJira) p.ticketsJira = [];
+    const ticket = {
+      id: generateId(),
+      fecha: ticketData.fecha || new Date().toISOString().split('T')[0],
+      url: ticketData.url || '',
+      descripcion: ticketData.descripcion || '',
+      createdAt: new Date().toISOString()
+    };
+    p.ticketsJira.push(ticket);
+    p.updatedAt = new Date().toISOString();
+    
+    authFetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    }).catch(err => console.error('Error al guardar ticket Jira:', err));
+
+    addHistory('update', 'project', projectId, `Ticket Jira agregado: ${ticket.descripcion.substring(0, 50)}`);
+    return ticket;
+  }
+
+  function removeTicketJira(projectId, ticketId) {
+    const p = cachedProjects.find(p => p.id === projectId);
+    if (!p || !p.ticketsJira) return false;
+    p.ticketsJira = p.ticketsJira.filter(t => t.id !== ticketId);
+    p.updatedAt = new Date().toISOString();
+    
+    authFetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    }).catch(err => console.error('Error al eliminar ticket Jira:', err));
+
+    addHistory('update', 'project', projectId, `Ticket Jira eliminado`);
+    return true;
+  }
+
+  function addTicketGitlab(projectId, ticketData) {
+    const p = cachedProjects.find(p => p.id === projectId);
+    if (!p) return null;
+    if (!p.ticketsGitlab) p.ticketsGitlab = [];
+    const ticket = {
+      id: generateId(),
+      fecha: ticketData.fecha || new Date().toISOString().split('T')[0],
+      url: ticketData.url || '',
+      descripcion: ticketData.descripcion || '',
+      createdAt: new Date().toISOString()
+    };
+    p.ticketsGitlab.push(ticket);
+    p.updatedAt = new Date().toISOString();
+    
+    authFetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    }).catch(err => console.error('Error al guardar enlace GitLab:', err));
+
+    addHistory('update', 'project', projectId, `Enlace GitLab agregado: ${ticket.descripcion.substring(0, 50)}`);
+    return ticket;
+  }
+
+  function removeTicketGitlab(projectId, ticketId) {
+    const p = cachedProjects.find(p => p.id === projectId);
+    if (!p || !p.ticketsGitlab) return false;
+    p.ticketsGitlab = p.ticketsGitlab.filter(t => t.id !== ticketId);
+    p.updatedAt = new Date().toISOString();
+    
+    authFetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    }).catch(err => console.error('Error al eliminar enlace GitLab:', err));
+
+    addHistory('update', 'project', projectId, `Enlace GitLab eliminado`);
+    return true;
+  }
+
   /* ── TEAM CRUD ── */
   function getTeam() {
     return cachedTeam;
@@ -607,6 +693,10 @@ const DataStore = (() => {
           p.liderTecnico === member.id ||
           p.scrumMaster === member.id ||
           p.productOwner === member.id ||
+          p.analistaFuncional === member.id ||
+          p.qaTester === member.id ||
+          p.dba === member.id ||
+          p.uxuiDesigner === member.id ||
           (p.desarrolladores && p.desarrolladores.includes(member.id))
         )
       );
@@ -829,6 +919,8 @@ const DataStore = (() => {
         minutas: [],
         ticketsMantis: [],
         ticketsTaiga: [],
+        ticketsJira: [],
+        ticketsGitlab: [],
         kanbanPinned: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -908,6 +1000,10 @@ const DataStore = (() => {
     removeTicketMantis,
     addTicketTaiga,
     removeTicketTaiga,
+    addTicketJira,
+    removeTicketJira,
+    addTicketGitlab,
+    removeTicketGitlab,
     // Team
     getTeam,
     getTeamMemberById,
