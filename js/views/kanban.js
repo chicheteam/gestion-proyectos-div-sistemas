@@ -58,10 +58,12 @@ const KanbanView = (() => {
 
           return `
             <div class="kanban-column ${isCollapsed ? 'kanban-column-collapsed' : ''}" data-status="${statusId}">
-              <div class="kanban-column-header">
-                <div class="kanban-column-title">
-                  <span class="kanban-column-dot" style="background:${statusInfo.color};"></span>
-                  ${statusInfo.label}
+              <div class="kanban-column-header" style="${!isCollapsed ? 'align-items: flex-start;' : ''}">
+                <div class="kanban-column-title-container" style="display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1;">
+                  <div class="kanban-column-title">
+                    <span class="kanban-column-dot" style="background:${statusInfo.color};"></span>
+                    ${statusInfo.label}
+                  </div>
                   ${!isCollapsed ? columnSubtitle : ''}
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;${isCollapsed ? 'flex-direction:column;' : ''}">
