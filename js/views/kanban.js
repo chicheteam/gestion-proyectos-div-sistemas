@@ -182,6 +182,30 @@ const KanbanView = (() => {
       `;
     }
 
+    // Tickets: Jira & Mantis
+    let ticketLinksHtml = '';
+    const mantisTicket = (p.ticketsMantis || []).find(t => t.url);
+    const jiraTicket = (p.ticketsJira || []).find(t => t.url);
+
+    if (mantisTicket || jiraTicket) {
+      ticketLinksHtml = `<div class="kanban-card-links">`;
+      if (mantisTicket) {
+        ticketLinksHtml += `
+          <a href="${mantisTicket.url}" target="_blank" class="kanban-link-icon mantis" onclick="event.stopPropagation();" title="Mantis: ${mantisTicket.descripcion || 'Ver ticket'}">
+            <i data-lucide="bug" style="width:12px;height:12px;"></i>
+          </a>
+        `;
+      }
+      if (jiraTicket) {
+        ticketLinksHtml += `
+          <a href="${jiraTicket.url}" target="_blank" class="kanban-link-icon jira" onclick="event.stopPropagation();" title="Jira: ${jiraTicket.descripcion || 'Ver ticket'}">
+            <i data-lucide="trello" style="width:12px;height:12px;"></i>
+          </a>
+        `;
+      }
+      ticketLinksHtml += `</div>`;
+    }
+
     const canDrag = AuthManager.canEditProject(p);
 
     return `
@@ -191,6 +215,7 @@ const KanbanView = (() => {
            ondblclick="ProjectsView.showDetail('${p.id}')"
            style="${!canDrag ? 'cursor:pointer;' : ''}">
         <div class="kanban-card-priority" style="background:${prioInfo.color};"></div>
+        ${ticketLinksHtml}
         <div class="kanban-card-title">${p.nombre}</div>
         <div class="kanban-card-meta">
           <span class="badge ${prioInfo.badgeClass}" style="font-size:0.62rem;">${prioInfo.label}</span>
