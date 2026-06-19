@@ -709,18 +709,21 @@ const ProjectsView = (() => {
       observaciones: document.getElementById('form-observaciones').value.trim()
     };
 
-    if (editingProjectId) {
-      DataStore.updateProject(editingProjectId, data);
-      App.showToast('Proyecto actualizado correctamente', 'success');
-    } else {
-      DataStore.createProject(data);
-      App.showToast('Proyecto creado correctamente', 'success');
-    }
+    const savePromise = editingProjectId 
+      ? DataStore.updateProject(editingProjectId, data)
+      : DataStore.createProject(data);
 
-    _pendingPdf = undefined;
-    closeForm();
-    render();
-    App.updateSidebarCounts();
+    savePromise
+      .then(() => {
+        App.showToast(editingProjectId ? 'Proyecto actualizado correctamente' : 'Proyecto creado correctamente', 'success');
+        _pendingPdf = undefined;
+        closeForm();
+        render();
+        App.updateSidebarCounts();
+      })
+      .catch(err => {
+        App.showToast('Error al guardar: ' + err.message, 'error');
+      });
   }
 
   /* ── Delete ── */
@@ -1526,16 +1529,26 @@ const ProjectsView = (() => {
       return;
     }
     
-    DataStore.addTicketMantis(projectId, { descripcion, fecha, url });
-    App.showToast('Ticket guardado', 'success');
-    showDetail(projectId);
+    DataStore.addTicketMantis(projectId, { descripcion, fecha, url })
+      .then(() => {
+        App.showToast('Ticket Mantis guardado', 'success');
+        showDetail(projectId);
+      })
+      .catch(err => {
+        App.showToast('Error al guardar: ' + err.message, 'error');
+      });
   }
 
   function deleteTicket(projectId, ticketId) {
     if (confirm('¿Eliminar este ticket?')) {
-      DataStore.removeTicketMantis(projectId, ticketId);
-      App.showToast('Ticket eliminado', 'success');
-      showDetail(projectId);
+      DataStore.removeTicketMantis(projectId, ticketId)
+        .then(() => {
+          App.showToast('Ticket Mantis eliminado', 'success');
+          showDetail(projectId);
+        })
+        .catch(err => {
+          App.showToast('Error al eliminar: ' + err.message, 'error');
+        });
     }
   }
 
@@ -1556,16 +1569,26 @@ const ProjectsView = (() => {
       return;
     }
     
-    DataStore.addTicketTaiga(projectId, { descripcion, fecha, url });
-    App.showToast('Enlace Taiga guardado', 'success');
-    showDetail(projectId);
+    DataStore.addTicketTaiga(projectId, { descripcion, fecha, url })
+      .then(() => {
+        App.showToast('Enlace Taiga guardado', 'success');
+        showDetail(projectId);
+      })
+      .catch(err => {
+        App.showToast('Error al guardar: ' + err.message, 'error');
+      });
   }
 
   function deleteTaiga(projectId, ticketId) {
     if (confirm('¿Eliminar este enlace de Taiga?')) {
-      DataStore.removeTicketTaiga(projectId, ticketId);
-      App.showToast('Enlace Taiga eliminado', 'success');
-      showDetail(projectId);
+      DataStore.removeTicketTaiga(projectId, ticketId)
+        .then(() => {
+          App.showToast('Enlace Taiga eliminado', 'success');
+          showDetail(projectId);
+        })
+        .catch(err => {
+          App.showToast('Error al eliminar: ' + err.message, 'error');
+        });
     }
   }
 
@@ -1586,16 +1609,26 @@ const ProjectsView = (() => {
       return;
     }
     
-    DataStore.addTicketJira(projectId, { descripcion, fecha, url });
-    App.showToast('Enlace Jira guardado', 'success');
-    showDetail(projectId);
+    DataStore.addTicketJira(projectId, { descripcion, fecha, url })
+      .then(() => {
+        App.showToast('Enlace Jira guardado', 'success');
+        showDetail(projectId);
+      })
+      .catch(err => {
+        App.showToast('Error al guardar: ' + err.message, 'error');
+      });
   }
 
   function deleteJira(projectId, ticketId) {
     if (confirm('¿Eliminar este enlace de Jira?')) {
-      DataStore.removeTicketJira(projectId, ticketId);
-      App.showToast('Enlace Jira eliminado', 'success');
-      showDetail(projectId);
+      DataStore.removeTicketJira(projectId, ticketId)
+        .then(() => {
+          App.showToast('Enlace Jira eliminado', 'success');
+          showDetail(projectId);
+        })
+        .catch(err => {
+          App.showToast('Error al eliminar: ' + err.message, 'error');
+        });
     }
   }
 
@@ -1616,16 +1649,26 @@ const ProjectsView = (() => {
       return;
     }
     
-    DataStore.addTicketGitlab(projectId, { descripcion, fecha, url });
-    App.showToast('Enlace GitLab guardado', 'success');
-    showDetail(projectId);
+    DataStore.addTicketGitlab(projectId, { descripcion, fecha, url })
+      .then(() => {
+        App.showToast('Enlace GitLab guardado', 'success');
+        showDetail(projectId);
+      })
+      .catch(err => {
+        App.showToast('Error al guardar: ' + err.message, 'error');
+      });
   }
 
   function deleteGitlab(projectId, ticketId) {
     if (confirm('¿Eliminar este enlace de GitLab?')) {
-      DataStore.removeTicketGitlab(projectId, ticketId);
-      App.showToast('Enlace GitLab eliminado', 'success');
-      showDetail(projectId);
+      DataStore.removeTicketGitlab(projectId, ticketId)
+        .then(() => {
+          App.showToast('Enlace GitLab eliminado', 'success');
+          showDetail(projectId);
+        })
+        .catch(err => {
+          App.showToast('Error al eliminar: ' + err.message, 'error');
+        });
     }
   }
 

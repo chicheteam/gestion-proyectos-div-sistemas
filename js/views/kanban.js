@@ -187,19 +187,24 @@ const KanbanView = (() => {
     const mantisTicket = (p.ticketsMantis || []).find(t => t.url);
     const jiraTicket = (p.ticketsJira || []).find(t => t.url);
 
+    const formatUrl = (url) => {
+      if (!url) return '';
+      return /^https?:\/\//i.test(url) ? url : 'http://' + url;
+    };
+
     if (mantisTicket || jiraTicket) {
       ticketLinksHtml = `<div class="kanban-card-links">`;
       if (mantisTicket) {
         ticketLinksHtml += `
-          <a href="${mantisTicket.url}" target="_blank" class="kanban-link-icon mantis" onclick="event.stopPropagation();" title="Mantis: ${mantisTicket.descripcion || 'Ver ticket'}">
-            <i data-lucide="bug" style="width:12px;height:12px;"></i>
+          <a href="${formatUrl(mantisTicket.url)}" target="_blank" class="kanban-link-icon mantis" onclick="event.stopPropagation();" title="Mantis: ${mantisTicket.descripcion || 'Ver ticket'}">
+            M
           </a>
         `;
       }
       if (jiraTicket) {
         ticketLinksHtml += `
-          <a href="${jiraTicket.url}" target="_blank" class="kanban-link-icon jira" onclick="event.stopPropagation();" title="Jira: ${jiraTicket.descripcion || 'Ver ticket'}">
-            <i data-lucide="trello" style="width:12px;height:12px;"></i>
+          <a href="${formatUrl(jiraTicket.url)}" target="_blank" class="kanban-link-icon jira" onclick="event.stopPropagation();" title="Jira: ${jiraTicket.descripcion || 'Ver ticket'}">
+            J
           </a>
         `;
       }

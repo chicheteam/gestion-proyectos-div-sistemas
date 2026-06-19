@@ -10,8 +10,10 @@ const DataStore = (() => {
    * Handles 401 (expired session) by redirecting to login.
    */
   function authFetch(url, options = {}) {
+    if (typeof AuthManager !== 'undefined' && AuthManager.authFetch) {
+      return AuthManager.authFetch(url, options);
+    }
     if (!options.headers) options.headers = {};
-    // Use AuthManager if available, otherwise try sessionStorage directly
     if (typeof AuthManager !== 'undefined' && AuthManager.getToken()) {
       options.headers['Authorization'] = `Bearer ${AuthManager.getToken()}`;
     } else {
@@ -23,11 +25,15 @@ const DataStore = (() => {
         }
       } catch (e) { /* ignore */ }
     }
-    return fetch(url, options).then(response => {
+    return fetch(url, options).then(async response => {
       if (response.status === 401) {
         sessionStorage.removeItem('div_sistemas_session');
         window.location.href = 'login.html';
         throw new Error('Sesión expirada');
+      }
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `Error del servidor (${response.status})`);
       }
       return response;
     });
@@ -254,22 +260,23 @@ const DataStore = (() => {
       updatedAt: new Date().toISOString()
     };
     
-    cachedProjects.push(newProject);
-
     // Save to Database
-    authFetch(`${API_BASE}/projects`, {
+    return authFetch(`${API_BASE}/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newProject)
-    }).catch(err => console.error('Error al guardar proyecto en base de datos:', err));
-
-    addHistory('create', 'project', newProject.id, `Proyecto "${newProject.nombre}" creado`);
-    return newProject;
+    })
+    .then(async res => {
+      const data = await res.json();
+      cachedProjects.push(data);
+      addHistory('create', 'project', data.id, `Proyecto "${data.nombre}" creado`);
+      return data;
+    });
   }
 
   function updateProject(id, updates) {
     const index = cachedProjects.findIndex(p => p.id === id);
-    if (index === -1) return null;
+    if (index === -1) return Promise.reject(new Error('Proyecto no encontrado'));
     const oldProject = { ...cachedProjects[index] };
 
     // Auto-set fechaProduccion when transitioning to 'produccion'
@@ -281,26 +288,30 @@ const DataStore = (() => {
       updates.fechaProduccion = '';
     }
 
-    cachedProjects[index] = { ...cachedProjects[index], ...updates, updatedAt: new Date().toISOString() };
+    const mergedProject = { ...cachedProjects[index], ...updates, updatedAt: new Date().toISOString() };
     
     // Save to Database
-    authFetch(`${API_BASE}/projects/${id}`, {
+    return authFetch(`${API_BASE}/projects/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cachedProjects[index])
-    }).catch(err => console.error('Error al actualizar proyecto en base de datos:', err));
+      body: JSON.stringify(mergedProject)
+    })
+    .then(async res => {
+      const data = await res.json();
+      cachedProjects[index] = data; // Sync with response
 
-    // Log changes
-    const changes = [];
-    for (const key of Object.keys(updates)) {
-      if (key !== 'updatedAt' && JSON.stringify(oldProject[key]) !== JSON.stringify(updates[key])) {
-        changes.push(key);
+      // Log changes
+      const changes = [];
+      for (const key of Object.keys(updates)) {
+        if (key !== 'updatedAt' && JSON.stringify(oldProject[key]) !== JSON.stringify(updates[key])) {
+          changes.push(key);
+        }
       }
-    }
-    if (changes.length > 0) {
-      addHistory('update', 'project', id, `Proyecto "${cachedProjects[index].nombre}" actualizado: ${changes.join(', ')}`);
-    }
-    return cachedProjects[index];
+      if (changes.length > 0) {
+        addHistory('update', 'project', id, `Proyecto "${data.nombre}" actualizado: ${changes.join(', ')}`);
+      }
+      return data;
+    });
   }
 
   function autoArchiveOldProductionProjects() {
@@ -420,7 +431,7 @@ const DataStore = (() => {
 
   function addTicketMantis(projectId, ticketData) {
     const p = cachedProjects.find(p => p.id === projectId);
-    if (!p) return null;
+    if (!p) return Promise.reject(new Error('Proyecto no encontrado'));
     if (!p.ticketsMantis) p.ticketsMantis = [];
     const ticket = {
       id: generateId(),
@@ -429,38 +440,48 @@ const DataStore = (() => {
       descripcion: ticketData.descripcion || '',
       createdAt: new Date().toISOString()
     };
-    p.ticketsMantis.push(ticket);
-    p.updatedAt = new Date().toISOString();
     
-    authFetch(`${API_BASE}/projects/${projectId}`, {
+    const updatedTickets = [...p.ticketsMantis, ticket];
+    const updatedProject = { ...p, ticketsMantis: updatedTickets, updatedAt: new Date().toISOString() };
+    
+    return authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(p)
-    }).catch(err => console.error('Error al guardar ticket Mantis:', err));
-
-    addHistory('update', 'project', projectId, `Ticket Mantis agregado: ${ticket.descripcion.substring(0, 50)}`);
-    return ticket;
+      body: JSON.stringify(updatedProject)
+    })
+    .then(async res => {
+      const data = await res.json();
+      const idx = cachedProjects.findIndex(proj => proj.id === projectId);
+      if (idx !== -1) cachedProjects[idx] = data;
+      addHistory('update', 'project', projectId, `Ticket Mantis agregado: ${ticket.descripcion.substring(0, 50)}`);
+      return ticket;
+    });
   }
 
   function removeTicketMantis(projectId, ticketId) {
     const p = cachedProjects.find(p => p.id === projectId);
-    if (!p || !p.ticketsMantis) return false;
-    p.ticketsMantis = p.ticketsMantis.filter(t => t.id !== ticketId);
-    p.updatedAt = new Date().toISOString();
+    if (!p || !p.ticketsMantis) return Promise.reject(new Error('Proyecto no encontrado'));
     
-    authFetch(`${API_BASE}/projects/${projectId}`, {
+    const updatedTickets = p.ticketsMantis.filter(t => t.id !== ticketId);
+    const updatedProject = { ...p, ticketsMantis: updatedTickets, updatedAt: new Date().toISOString() };
+    
+    return authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(p)
-    }).catch(err => console.error('Error al eliminar ticket Mantis:', err));
-
-    addHistory('update', 'project', projectId, `Ticket Mantis eliminado`);
-    return true;
+      body: JSON.stringify(updatedProject)
+    })
+    .then(async res => {
+      const data = await res.json();
+      const idx = cachedProjects.findIndex(proj => proj.id === projectId);
+      if (idx !== -1) cachedProjects[idx] = data;
+      addHistory('update', 'project', projectId, `Ticket Mantis eliminado`);
+      return true;
+    });
   }
 
   function addTicketTaiga(projectId, ticketData) {
     const p = cachedProjects.find(p => p.id === projectId);
-    if (!p) return null;
+    if (!p) return Promise.reject(new Error('Proyecto no encontrado'));
     if (!p.ticketsTaiga) p.ticketsTaiga = [];
     const ticket = {
       id: generateId(),
@@ -469,38 +490,48 @@ const DataStore = (() => {
       descripcion: ticketData.descripcion || '',
       createdAt: new Date().toISOString()
     };
-    p.ticketsTaiga.push(ticket);
-    p.updatedAt = new Date().toISOString();
     
-    authFetch(`${API_BASE}/projects/${projectId}`, {
+    const updatedTickets = [...p.ticketsTaiga, ticket];
+    const updatedProject = { ...p, ticketsTaiga: updatedTickets, updatedAt: new Date().toISOString() };
+    
+    return authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(p)
-    }).catch(err => console.error('Error al guardar ticket Taiga:', err));
-
-    addHistory('update', 'project', projectId, `Enlace Taiga agregado: ${ticket.descripcion.substring(0, 50)}`);
-    return ticket;
+      body: JSON.stringify(updatedProject)
+    })
+    .then(async res => {
+      const data = await res.json();
+      const idx = cachedProjects.findIndex(proj => proj.id === projectId);
+      if (idx !== -1) cachedProjects[idx] = data;
+      addHistory('update', 'project', projectId, `Enlace Taiga agregado: ${ticket.descripcion.substring(0, 50)}`);
+      return ticket;
+    });
   }
 
   function removeTicketTaiga(projectId, ticketId) {
     const p = cachedProjects.find(p => p.id === projectId);
-    if (!p || !p.ticketsTaiga) return false;
-    p.ticketsTaiga = p.ticketsTaiga.filter(t => t.id !== ticketId);
-    p.updatedAt = new Date().toISOString();
+    if (!p || !p.ticketsTaiga) return Promise.reject(new Error('Proyecto no encontrado'));
     
-    authFetch(`${API_BASE}/projects/${projectId}`, {
+    const updatedTickets = p.ticketsTaiga.filter(t => t.id !== ticketId);
+    const updatedProject = { ...p, ticketsTaiga: updatedTickets, updatedAt: new Date().toISOString() };
+    
+    return authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(p)
-    }).catch(err => console.error('Error al eliminar ticket Taiga:', err));
-
-    addHistory('update', 'project', projectId, `Enlace Taiga eliminado`);
-    return true;
+      body: JSON.stringify(updatedProject)
+    })
+    .then(async res => {
+      const data = await res.json();
+      const idx = cachedProjects.findIndex(proj => proj.id === projectId);
+      if (idx !== -1) cachedProjects[idx] = data;
+      addHistory('update', 'project', projectId, `Enlace Taiga eliminado`);
+      return true;
+    });
   }
 
   function addTicketJira(projectId, ticketData) {
     const p = cachedProjects.find(p => p.id === projectId);
-    if (!p) return null;
+    if (!p) return Promise.reject(new Error('Proyecto no encontrado'));
     if (!p.ticketsJira) p.ticketsJira = [];
     const ticket = {
       id: generateId(),
@@ -509,38 +540,48 @@ const DataStore = (() => {
       descripcion: ticketData.descripcion || '',
       createdAt: new Date().toISOString()
     };
-    p.ticketsJira.push(ticket);
-    p.updatedAt = new Date().toISOString();
     
-    authFetch(`${API_BASE}/projects/${projectId}`, {
+    const updatedTickets = [...p.ticketsJira, ticket];
+    const updatedProject = { ...p, ticketsJira: updatedTickets, updatedAt: new Date().toISOString() };
+    
+    return authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(p)
-    }).catch(err => console.error('Error al guardar ticket Jira:', err));
-
-    addHistory('update', 'project', projectId, `Ticket Jira agregado: ${ticket.descripcion.substring(0, 50)}`);
-    return ticket;
+      body: JSON.stringify(updatedProject)
+    })
+    .then(async res => {
+      const data = await res.json();
+      const idx = cachedProjects.findIndex(proj => proj.id === projectId);
+      if (idx !== -1) cachedProjects[idx] = data;
+      addHistory('update', 'project', projectId, `Ticket Jira agregado: ${ticket.descripcion.substring(0, 50)}`);
+      return ticket;
+    });
   }
 
   function removeTicketJira(projectId, ticketId) {
     const p = cachedProjects.find(p => p.id === projectId);
-    if (!p || !p.ticketsJira) return false;
-    p.ticketsJira = p.ticketsJira.filter(t => t.id !== ticketId);
-    p.updatedAt = new Date().toISOString();
+    if (!p || !p.ticketsJira) return Promise.reject(new Error('Proyecto no encontrado'));
     
-    authFetch(`${API_BASE}/projects/${projectId}`, {
+    const updatedTickets = p.ticketsJira.filter(t => t.id !== ticketId);
+    const updatedProject = { ...p, ticketsJira: updatedTickets, updatedAt: new Date().toISOString() };
+    
+    return authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(p)
-    }).catch(err => console.error('Error al eliminar ticket Jira:', err));
-
-    addHistory('update', 'project', projectId, `Ticket Jira eliminado`);
-    return true;
+      body: JSON.stringify(updatedProject)
+    })
+    .then(async res => {
+      const data = await res.json();
+      const idx = cachedProjects.findIndex(proj => proj.id === projectId);
+      if (idx !== -1) cachedProjects[idx] = data;
+      addHistory('update', 'project', projectId, `Ticket Jira eliminado`);
+      return true;
+    });
   }
 
   function addTicketGitlab(projectId, ticketData) {
     const p = cachedProjects.find(p => p.id === projectId);
-    if (!p) return null;
+    if (!p) return Promise.reject(new Error('Proyecto no encontrado'));
     if (!p.ticketsGitlab) p.ticketsGitlab = [];
     const ticket = {
       id: generateId(),
@@ -549,33 +590,43 @@ const DataStore = (() => {
       descripcion: ticketData.descripcion || '',
       createdAt: new Date().toISOString()
     };
-    p.ticketsGitlab.push(ticket);
-    p.updatedAt = new Date().toISOString();
     
-    authFetch(`${API_BASE}/projects/${projectId}`, {
+    const updatedTickets = [...p.ticketsGitlab, ticket];
+    const updatedProject = { ...p, ticketsGitlab: updatedTickets, updatedAt: new Date().toISOString() };
+    
+    return authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(p)
-    }).catch(err => console.error('Error al guardar enlace GitLab:', err));
-
-    addHistory('update', 'project', projectId, `Enlace GitLab agregado: ${ticket.descripcion.substring(0, 50)}`);
-    return ticket;
+      body: JSON.stringify(updatedProject)
+    })
+    .then(async res => {
+      const data = await res.json();
+      const idx = cachedProjects.findIndex(proj => proj.id === projectId);
+      if (idx !== -1) cachedProjects[idx] = data;
+      addHistory('update', 'project', projectId, `Enlace GitLab agregado: ${ticket.descripcion.substring(0, 50)}`);
+      return ticket;
+    });
   }
 
   function removeTicketGitlab(projectId, ticketId) {
     const p = cachedProjects.find(p => p.id === projectId);
-    if (!p || !p.ticketsGitlab) return false;
-    p.ticketsGitlab = p.ticketsGitlab.filter(t => t.id !== ticketId);
-    p.updatedAt = new Date().toISOString();
+    if (!p || !p.ticketsGitlab) return Promise.reject(new Error('Proyecto no encontrado'));
     
-    authFetch(`${API_BASE}/projects/${projectId}`, {
+    const updatedTickets = p.ticketsGitlab.filter(t => t.id !== ticketId);
+    const updatedProject = { ...p, ticketsGitlab: updatedTickets, updatedAt: new Date().toISOString() };
+    
+    return authFetch(`${API_BASE}/projects/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(p)
-    }).catch(err => console.error('Error al eliminar enlace GitLab:', err));
-
-    addHistory('update', 'project', projectId, `Enlace GitLab eliminado`);
-    return true;
+      body: JSON.stringify(updatedProject)
+    })
+    .then(async res => {
+      const data = await res.json();
+      const idx = cachedProjects.findIndex(proj => proj.id === projectId);
+      if (idx !== -1) cachedProjects[idx] = data;
+      addHistory('update', 'project', projectId, `Enlace GitLab eliminado`);
+      return true;
+    });
   }
 
   /* ── TEAM CRUD ── */
