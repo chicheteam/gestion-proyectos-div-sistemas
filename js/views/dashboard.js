@@ -726,7 +726,22 @@ const DashboardView = (() => {
       return new Date(p.fechaEstimadaFin + 'T12:00:00') < now;
     }).sort((a, b) => new Date(a.fechaEstimadaFin) - new Date(b.fechaEstimadaFin));
 
-    const allDeadlines = [...overdue, ...deadlines];
+    // Combine and de-duplicate by ID (preserving overdue order first)
+    const allDeadlines = [];
+    const seenIds = new Set();
+    
+    for (const p of overdue) {
+      if (!seenIds.has(p.id)) {
+        seenIds.add(p.id);
+        allDeadlines.push(p);
+      }
+    }
+    for (const p of deadlines) {
+      if (!seenIds.has(p.id)) {
+        seenIds.add(p.id);
+        allDeadlines.push(p);
+      }
+    }
 
     const container = document.getElementById('upcoming-deadlines-list');
     if (!container) return;
