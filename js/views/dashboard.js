@@ -201,8 +201,8 @@ const DashboardView = (() => {
         <div class="chart-card">
           <div class="chart-card-header">
             <div>
-              <div class="chart-card-title">Distribución por Estado</div>
-              <div class="chart-card-subtitle">Estado actual del pipeline</div>
+              <div class="chart-card-title">📁 Distribución de Proyectos Activos</div>
+              <div class="chart-card-subtitle">Desglose de los ${activeProjects.length} proyectos bajo gestión (excluye terminados y cancelados)</div>
             </div>
           </div>
           <div class="chart-container" style="height: 280px">
@@ -214,10 +214,24 @@ const DashboardView = (() => {
       <!-- 9. Charts Row 2: Distribución por Prioridad + Complejidad -->
       <div class="charts-grid charts-grid-equal animate-fade-in" style="animation-delay: 0.45s">
         <div class="chart-card">
-          <div class="chart-card-header">
+          <div class="chart-card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
             <div>
-              <div class="chart-card-title">Distribución por Prioridad</div>
-              <div class="chart-card-subtitle">Clasificación de urgencia</div>
+              <div class="chart-card-title">📊 Distribución por Prioridad</div>
+              <div id="priority-chart-subtitle" class="chart-card-subtitle">Clasificación de urgencia (Proyectos Activos)</div>
+            </div>
+            <div>
+              <select id="priority-chart-filter" style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-family: 'Inter', sans-serif; cursor: pointer; outline: none; transition: border-color 0.2s;">
+                <option value="activos" selected>Todos los activos</option>
+                <option value="solicitud">Solicitudes</option>
+                <option value="backlog">Backlog</option>
+                <option value="analisis">En Análisis</option>
+                <option value="desarrollo">En Desarrollo</option>
+                <option value="testing">Testing / QA</option>
+                <option value="pausado">Pausados</option>
+                <option value="produccion">En Producción</option>
+                <option value="cancelado">Cancelados</option>
+                <option value="todos">Todos los registrados</option>
+              </select>
             </div>
           </div>
           <div class="chart-container" style="height: 260px">
@@ -225,10 +239,24 @@ const DashboardView = (() => {
           </div>
         </div>
         <div class="chart-card">
-          <div class="chart-card-header">
+          <div class="chart-card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
             <div>
-              <div class="chart-card-title">Complejidad de Proyectos</div>
-              <div class="chart-card-subtitle">Nivel de dificultad estimada</div>
+              <div class="chart-card-title">🧩 Complejidad de Proyectos</div>
+              <div id="difficulty-chart-subtitle" class="chart-card-subtitle">Nivel de dificultad estimada (Proyectos Activos)</div>
+            </div>
+            <div>
+              <select id="difficulty-chart-filter" style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-family: 'Inter', sans-serif; cursor: pointer; outline: none; transition: border-color 0.2s;">
+                <option value="activos" selected>Todos los activos</option>
+                <option value="solicitud">Solicitudes</option>
+                <option value="backlog">Backlog</option>
+                <option value="analisis">En Análisis</option>
+                <option value="desarrollo">En Desarrollo</option>
+                <option value="testing">Testing / QA</option>
+                <option value="pausado">Pausados</option>
+                <option value="produccion">En Producción</option>
+                <option value="cancelado">Cancelados</option>
+                <option value="todos">Todos los registrados</option>
+              </select>
             </div>
           </div>
           <div class="chart-container" style="height: 260px">
@@ -254,6 +282,22 @@ const DashboardView = (() => {
           else subtitle.textContent = 'Proyectos ingresados, en desarrollo y completados (historial completo)';
         }
         renderMonthlyChart();
+      });
+    }
+
+    // Register priority chart filter event
+    const priorityFilterSelect = document.getElementById('priority-chart-filter');
+    if (priorityFilterSelect) {
+      priorityFilterSelect.addEventListener('change', (e) => {
+        renderPriorityChart(e.target.value);
+      });
+    }
+
+    // Register difficulty chart filter event
+    const diffFilterSelect = document.getElementById('difficulty-chart-filter');
+    if (diffFilterSelect) {
+      diffFilterSelect.addEventListener('change', (e) => {
+        renderDifficultyChart(e.target.value);
       });
     }
 
@@ -817,8 +861,19 @@ const DashboardView = (() => {
      ════════════════════════════════════════════ */
 
   function renderStatusChart() {
-    const byStatus = DataStore.getProjectsByStatus();
-    const statuses = DataStore.STATUSES;
+    const allProjects = DataStore.getProjects();
+    const activeProjects = allProjects.filter(p => p.estado !== 'archivado' && !['produccion', 'cancelado'].includes(p.estado));
+    
+    // Group active projects by status
+    const byStatus = {};
+    activeProjects.forEach(p => {
+      byStatus[p.estado] = (byStatus[p.estado] || 0) + 1;
+    });
+
+    const activeStatuses = DataStore.STATUSES.filter(s => 
+      ['solicitud', 'backlog', 'analisis', 'desarrollo', 'testing', 'pausado'].includes(s.id)
+    );
+
     const ctx = document.getElementById('chart-status');
     if (!ctx) return;
 
@@ -826,11 +881,11 @@ const DashboardView = (() => {
     statusChart = new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: statuses.map(s => s.label),
+        labels: activeStatuses.map(s => s.label),
         datasets: [{
-          data: statuses.map(s => byStatus[s.id] || 0),
-          backgroundColor: statuses.map(s => s.color + '99'),
-          borderColor: statuses.map(s => s.color),
+          data: activeStatuses.map(s => byStatus[s.id] || 0),
+          backgroundColor: activeStatuses.map(s => s.color + '99'),
+          borderColor: activeStatuses.map(s => s.color),
           borderWidth: 2,
           hoverOffset: 6
         }]
@@ -838,11 +893,11 @@ const DashboardView = (() => {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '65%',
+        cutout: '70%',
         onClick: (event, elements) => {
           if (!elements || elements.length === 0) return;
           const el = elements[0];
-          const status = statuses[el.index];
+          const status = activeStatuses[el.index];
           if (status) {
             ProjectsView.setFilter(status.id);
             App.navigateTo('projects');
@@ -860,13 +915,74 @@ const DashboardView = (() => {
             }
           }
         }
-      }
+      },
+      plugins: [{
+        id: 'centerText',
+        beforeDraw: function(chart) {
+          const meta = chart.getDatasetMeta(0);
+          if (!meta.data || !meta.data[0]) return;
+          const x = meta.data[0].x;
+          const y = meta.data[0].y;
+          const ctx = chart.ctx;
+          ctx.save();
+          
+          // Calculate the sum of visible items only
+          let visibleSum = 0;
+          chart.data.datasets[0].data.forEach((val, idx) => {
+            if (chart.getDataVisibility(idx)) {
+              visibleSum += val;
+            }
+          });
+          
+          // Draw the number
+          ctx.font = "bold 2rem 'Inter', sans-serif";
+          ctx.textBaseline = "middle";
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(visibleSum.toString(), x, y - 8);
+          
+          // Draw the label "Activos"
+          ctx.font = "600 0.72rem 'Inter', sans-serif";
+          ctx.fillStyle = "#94a3b8";
+          ctx.fillText("ACTIVOS", x, y + 16);
+          ctx.restore();
+        }
+      }]
     });
     ctx.style.cursor = 'pointer';
   }
 
-  function renderPriorityChart() {
-    const byPriority = DataStore.getProjectsByPriority();
+  function renderPriorityChart(filterState = 'activos') {
+    const allProjects = DataStore.getProjects();
+    const projects = allProjects.filter(p => p.estado !== 'archivado');
+    
+    let filtered;
+    let stateLabel = 'Proyectos Activos';
+    
+    if (filterState === 'activos') {
+      filtered = projects.filter(p => !['produccion', 'cancelado'].includes(p.estado));
+      stateLabel = 'Proyectos Activos';
+    } else if (filterState === 'todos') {
+      filtered = projects;
+      stateLabel = 'Todos los Registrados';
+    } else {
+      filtered = projects.filter(p => p.estado === filterState);
+      const statusObj = DataStore.STATUSES.find(s => s.id === filterState);
+      stateLabel = statusObj ? statusObj.label : filterState;
+    }
+
+    const byPriority = { critica: 0, alta: 0, media: 0, baja: 0 };
+    filtered.forEach(p => {
+      if (byPriority[p.prioridad] !== undefined) {
+        byPriority[p.prioridad]++;
+      }
+    });
+
+    const subtitle = document.getElementById('priority-chart-subtitle');
+    if (subtitle) {
+      subtitle.innerHTML = `Clasificación para <strong>${filtered.length}</strong> proyectos (${stateLabel})`;
+    }
+
     const priorities = DataStore.PRIORITIES;
     const ctx = document.getElementById('chart-priority');
     if (!ctx) return;
@@ -890,7 +1006,27 @@ const DashboardView = (() => {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { display: false }
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const priorityId = priorities[context.dataIndex].id;
+                const matches = filtered.filter(p => p.prioridad === priorityId);
+                return `Proyectos: ${matches.length}`;
+              },
+              afterBody: function(contexts) {
+                const context = contexts[0];
+                const priorityId = priorities[context.dataIndex].id;
+                const matches = filtered.filter(p => p.prioridad === priorityId);
+                if (matches.length === 0) return '';
+                const names = matches.map(p => `• ${p.nombre}`);
+                if (names.length > 8) {
+                  return names.slice(0, 8).join('\n') + `\n  ...y ${names.length - 8} más`;
+                }
+                return names.join('\n');
+              }
+            }
+          }
         },
         scales: {
           x: {
@@ -1597,10 +1733,33 @@ const DashboardView = (() => {
     }
   }
 
-  function renderDifficultyChart() {
-    const projects = DataStore.getProjects().filter(p => p.estado !== 'archivado');
+  function renderDifficultyChart(filterState = 'activos') {
+    const allProjects = DataStore.getProjects();
+    const projects = allProjects.filter(p => p.estado !== 'archivado');
+    
+    let filtered;
+    let stateLabel = 'Proyectos Activos';
+    
+    if (filterState === 'activos') {
+      filtered = projects.filter(p => !['produccion', 'cancelado'].includes(p.estado));
+      stateLabel = 'Proyectos Activos';
+    } else if (filterState === 'todos') {
+      filtered = projects;
+      stateLabel = 'Todos los Registrados';
+    } else {
+      filtered = projects.filter(p => p.estado === filterState);
+      const statusObj = DataStore.STATUSES.find(s => s.id === filterState);
+      stateLabel = statusObj ? statusObj.label : filterState;
+    }
+
     const scale = DataStore.DIFFICULTY_SCALE;
-    const counts = scale.map(d => projects.filter(p => p.dificultad === d.value).length);
+    const counts = scale.map(d => filtered.filter(p => p.dificultad === d.value).length);
+
+    const subtitle = document.getElementById('difficulty-chart-subtitle');
+    if (subtitle) {
+      subtitle.innerHTML = `Estimación para <strong>${filtered.length}</strong> proyectos (${stateLabel})`;
+    }
+
     const ctx = document.getElementById('chart-difficulty');
     if (!ctx) return;
 
@@ -1623,6 +1782,26 @@ const DashboardView = (() => {
           legend: {
             position: 'right',
             labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 }, usePointStyle: true, padding: 10 }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const val = scale[context.dataIndex].value;
+                const matches = filtered.filter(p => p.dificultad === val);
+                return `Proyectos: ${matches.length}`;
+              },
+              afterBody: function(contexts) {
+                const context = contexts[0];
+                const val = scale[context.dataIndex].value;
+                const matches = filtered.filter(p => p.dificultad === val);
+                if (matches.length === 0) return '';
+                const names = matches.map(p => `• ${p.nombre}`);
+                if (names.length > 8) {
+                  return names.slice(0, 8).join('\n') + `\n  ...y ${names.length - 8} más`;
+                }
+                return names.join('\n');
+              }
+            }
           }
         },
         scales: {
