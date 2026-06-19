@@ -6,9 +6,8 @@ const KanbanView = (() => {
   const KANBAN_STATUSES = ['solicitud', 'backlog', 'analisis', 'desarrollo', 'testing', 'produccion'];
   let draggedCard = null;
   let filterPriority = 'all';
-  let collapsedColumns = new Set();
+  let collapsedColumns = new Set(['backlog', 'produccion']);
   const PRODUCTION_DAYS_LIMIT = 60;
-
   function toggleColumn(statusId) {
     if (collapsedColumns.has(statusId)) {
       collapsedColumns.delete(statusId);
