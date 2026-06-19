@@ -119,7 +119,7 @@ const KanbanView = (() => {
     }
     // Sort by priority weight
     const prioWeight = { critica: 0, alta: 1, media: 2, baja: 3 };
-    projects.sort((a, b) => (prioWeight[a.prioridad] || 2) - (prioWeight[b.prioridad] || 2));
+    projects.sort((a, b) => (prioWeight[a.prioridad] ?? 2) - (prioWeight[b.prioridad] ?? 2));
     return projects;
   }
 
@@ -188,7 +188,7 @@ const KanbanView = (() => {
       <div class="kanban-card" draggable="${canDrag}" data-id="${p.id}"
            ondragstart="KanbanView.handleDragStart(event, '${p.id}')"
            ondragend="KanbanView.handleDragEnd(event)"
-           onclick="ProjectsView.showDetail('${p.id}')"
+           ondblclick="ProjectsView.showDetail('${p.id}')"
            style="${!canDrag ? 'cursor:pointer;' : ''}">
         <div class="kanban-card-priority" style="background:${prioInfo.color};"></div>
         <div class="kanban-card-title">${p.nombre}</div>
