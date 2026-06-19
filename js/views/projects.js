@@ -100,68 +100,6 @@ const ProjectsView = (() => {
         <div class="data-table-footer" id="projects-footer"></div>
       </div>
 
-      <!-- Project Form Modal -->
-      <div class="modal-overlay" id="project-modal">
-        <div class="modal modal-lg">
-          <div class="modal-header">
-            <h3 class="modal-title" id="project-modal-title">Nuevo Proyecto</h3>
-            <button class="modal-close" onclick="ProjectsView.closeForm()">
-              <i data-lucide="x" style="width:18px;height:18px;"></i>
-            </button>
-          </div>
-          <div class="modal-body" id="project-modal-body"></div>
-          <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="ProjectsView.closeForm()">Cancelar</button>
-            <button class="btn btn-primary" id="project-save-btn" onclick="ProjectsView.saveProject()">
-              <i data-lucide="save" style="width:16px;height:16px;"></i> Guardar
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Delete Confirm Modal -->
-      <div class="modal-overlay" id="delete-modal">
-        <div class="modal modal-sm">
-          <div class="modal-header">
-            <h3 class="modal-title">Confirmar Eliminación</h3>
-            <button class="modal-close" onclick="ProjectsView.closeDelete()">
-              <i data-lucide="x" style="width:18px;height:18px;"></i>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="confirm-dialog">
-              <div class="confirm-dialog-icon">🗑️</div>
-              <h3>¿Eliminar este proyecto?</h3>
-              <p id="delete-project-name">Esta acción no se puede deshacer.</p>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="ProjectsView.closeDelete()">Cancelar</button>
-            <button class="btn btn-danger" id="delete-confirm-btn" onclick="ProjectsView.confirmDelete()">
-              <i data-lucide="trash-2" style="width:16px;height:16px;"></i> Eliminar
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Detail Modal -->
-      <div class="modal-overlay" id="detail-modal">
-        <div class="modal modal-lg">
-          <div class="modal-header">
-            <h3 class="modal-title" id="detail-modal-title">Detalle del Proyecto</h3>
-            <button class="modal-close" onclick="ProjectsView.closeDetail()">
-              <i data-lucide="x" style="width:18px;height:18px;"></i>
-            </button>
-          </div>
-          <div class="modal-body" id="detail-modal-body"></div>
-          <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="ProjectsView.closeDetail()">Cerrar</button>
-            <button class="btn btn-primary" id="detail-edit-btn" style="display:none;">
-              <i data-lucide="pencil" style="width:16px;height:16px;"></i> Editar
-            </button>
-          </div>
-        </div>
-      </div>
     `;
 
     renderTableRows();

@@ -116,29 +116,93 @@
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
 
+  <!-- Global Modals (Shared across views) -->
+  <!-- Project Form Modal -->
+  <div class="modal-overlay" id="project-modal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="project-modal-title">Nuevo Proyecto</h3>
+        <button class="modal-close" onclick="ProjectsView.closeForm()">
+          <i data-lucide="x" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="project-modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="ProjectsView.closeForm()">Cancelar</button>
+        <button class="btn btn-primary" id="project-save-btn" onclick="ProjectsView.saveProject()">
+          <i data-lucide="save" style="width:16px;height:16px;"></i> Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3 class="modal-title">Confirmar Eliminación</h3>
+        <button class="modal-close" onclick="ProjectsView.closeDelete()">
+          <i data-lucide="x" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="confirm-dialog">
+          <div class="confirm-dialog-icon">🗑️</div>
+          <h3>¿Eliminar este proyecto?</h3>
+          <p id="delete-project-name">Esta acción no se puede deshacer.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="ProjectsView.closeDelete()">Cancelar</button>
+        <button class="btn btn-danger" id="delete-confirm-btn" onclick="ProjectsView.confirmDelete()">
+          <i data-lucide="trash-2" style="width:16px;height:16px;"></i> Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="modal-overlay" id="detail-modal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="detail-modal-title">Detalle del Proyecto</h3>
+        <button class="modal-close" onclick="ProjectsView.closeDetail()">
+          <i data-lucide="x" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="detail-modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="ProjectsView.closeDetail()">Cerrar</button>
+        <button class="btn btn-primary" id="detail-edit-btn" style="display:none;">
+          <i data-lucide="pencil" style="width:16px;height:16px;"></i> Editar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Chart.js and Lucide Icons CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <!-- Auth Module (MUST load first) -->
-  <script src="js/auth.js?v=10"></script>
+  <script src="js/auth.js?v=11"></script>
 
   <!-- Data Layer & Business Logic -->
-  <script src="js/migrated_data.js?v=10"></script>
-  <script src="js/data.js?v=10"></script>
+  <script src="js/migrated_data.js?v=11"></script>
+  <script src="js/data.js?v=11"></script>
   
   <!-- Views -->
-  <script src="js/views/dashboard.js?v=14"></script>
-  <script src="js/views/projects.js?v=10"></script>
-  <script src="js/views/kanban.js?v=12"></script>
-  <script src="js/views/team.js?v=10"></script>
-  <script src="js/views/reports.js?v=10"></script>
-  <script src="js/views/users.js?v=10"></script>
+  <script src="js/views/dashboard.js?v=15"></script>
+  <script src="js/views/projects.js?v=11"></script>
+  <script src="js/views/kanban.js?v=13"></script>
+  <script src="js/views/team.js?v=11"></script>
+  <script src="js/views/reports.js?v=11"></script>
+  <script src="js/views/users.js?v=11"></script>
   
   <!-- Notifications Engine -->
-  <script src="js/notifications.js?v=10"></script>
+  <script src="js/notifications.js?v=11"></script>
 
   <!-- Application Bootstrapper -->
-  <script src="js/app.js?v=10"></script>
+  <script src="js/app.js?v=11"></script>
 </body>
 </html>
