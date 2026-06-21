@@ -2982,6 +2982,101 @@ input:checked + .slider:before {
   font-weight: 600;
 }
 
+/* Layout estructurado para el Resumen Ejecutivo */
+.dash-exec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 20px;
+  margin-top: 6px;
+}
+
+.dash-exec-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dash-exec-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+.dash-exec-section-title svg,
+.dash-exec-section-title i {
+  width: 14px;
+  height: 14px;
+  color: var(--primary-400);
+}
+
+.dash-exec-metric-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dash-exec-metric-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--border-radius-md);
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.dash-exec-metric-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(99, 102, 241, 0.08);
+}
+
+.dash-exec-metric-item svg,
+.dash-exec-metric-item i {
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.dash-exec-metric-item .metric-icon.blue { color: var(--status-blue); }
+.dash-exec-metric-item .metric-icon.green { color: var(--status-green); }
+.dash-exec-metric-item .metric-icon.yellow { color: var(--status-yellow); }
+.dash-exec-metric-item .metric-icon.orange { color: var(--status-orange); }
+.dash-exec-metric-item .metric-icon.red { color: var(--status-red); }
+.dash-exec-metric-item .metric-icon.purple { color: var(--status-purple); }
+.dash-exec-metric-item .metric-icon.gray { color: var(--text-tertiary); }
+
+/* Destacados en alertas */
+.dash-exec-metric-item.highlight-red-bg {
+  background: rgba(239, 68, 68, 0.04);
+  border-color: rgba(239, 68, 68, 0.12);
+}
+.dash-exec-metric-item.highlight-red-bg:hover {
+  background: rgba(239, 68, 68, 0.07);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.dash-exec-metric-item.highlight-orange-bg {
+  background: rgba(249, 115, 22, 0.04);
+  border-color: rgba(249, 115, 22, 0.12);
+}
+.dash-exec-metric-item.highlight-orange-bg:hover {
+  background: rgba(249, 115, 22, 0.07);
+  border-color: rgba(249, 115, 22, 0.2);
+}
+
 .dash-exec-copy-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-subtle);

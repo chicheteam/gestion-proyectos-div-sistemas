@@ -36,6 +36,10 @@ services:
     ports:
       - "80:80"
     volumes:
+      - ./index.html:/usr/share/nginx/html/index.html
+      - ./login.html:/usr/share/nginx/html/login.html
+      - ./css:/usr/share/nginx/html/css
+      - ./js:/usr/share/nginx/html/js
       - ./img:/usr/share/nginx/html/img
     depends_on:
       - backend-api

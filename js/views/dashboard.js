@@ -466,43 +466,179 @@ const DashboardView = (() => {
       level = 'warning'; levelLabel = 'ATENCIÓN'; levelIcon = '🟡';
     }
 
-    // Build narrative
-    const lines = [];
-    lines.push(`La oficina gestiona actualmente <strong>${activeProjects.length} proyectos activos</strong> con <strong>${activeDevs.length} personas</strong> en el equipo.`);
+    // Build names lists safely with correct suffixes to avoid count mismatch
+    const overdueNames = alerts.overdue.length > 0 
+      ? alerts.overdue.slice(0, 2).map(a => `"${a.project.nombre}"`).join(', ') + (alerts.overdue.length > 2 ? ` y ${alerts.overdue.length - 2} más` : '')
+      : '';
+      
+    const blockedNames = blocked.length > 0
+      ? blocked.slice(0, 2).map(p => `"${p.nombre}"`).join(', ') + (blocked.length > 2 ? ` y ${blocked.length - 2} más` : '')
+      : '';
 
-    if (alerts.overdue.length > 0) {
-      const overdueNames = alerts.overdue.slice(0, 2).map(a => `"${a.project.nombre}"`).join(', ');
-      lines.push(`Hay <span class="highlight-red">${alerts.overdue.length} entrega${alerts.overdue.length > 1 ? 's' : ''} vencida${alerts.overdue.length > 1 ? 's' : ''}</span> que ${alerts.overdue.length > 1 ? 'requieren' : 'requiere'} atención inmediata: ${overdueNames}.`);
-    }
+    const criticalNames = criticalProjects.length > 0
+      ? criticalProjects.slice(0, 3).map(p => `"${p.nombre}"`).join(', ') + (criticalProjects.length > 3 ? ` y ${criticalProjects.length - 3} más` : '')
+      : '';
 
-    if (alerts.urgent7d.length > 0) {
-      lines.push(`Se aproximan <span class="highlight-orange">${alerts.urgent7d.length} entrega${alerts.urgent7d.length > 1 ? 's' : ''}</span> en los próximos 7 días.`);
-    }
-
-    if (alerts.saturated.length > 0) {
-      lines.push(`Hay <span class="highlight-red">${alerts.saturated.length} persona${alerts.saturated.length > 1 ? 's' : ''} saturada${alerts.saturated.length > 1 ? 's' : ''}</span> (${saturatedNames.join(', ')}). Se recomienda redistribuir carga.`);
-    }
-
+    // HTML Narrative columns structure for clean justified readability
+    const leftColItems = [];
+    const rightColItems = [];
+    
+    // Left column: Resumen de Operación
+    leftColItems.push(`
+      <div class="dash-exec-metric-item">
+        <i data-lucide="folder-kanban" class="metric-icon blue"></i>
+        <span>La oficina gestiona actualmente <strong>${activeProjects.length} proyectos activos</strong>.</span>
+      </div>
+    `);
+    
+    leftColItems.push(`
+      <div class="dash-exec-metric-item">
+        <i data-lucide="users-2" class="metric-icon blue"></i>
+        <span>Equipo de trabajo conformado por <strong>${activeDevs.length} personas</strong> activas.</span>
+      </div>
+    `);
+    
     if (availableCount > 0) {
-      lines.push(`<span class="highlight-green">${availableCount} persona${availableCount > 1 ? 's' : ''}</span> con disponibilidad para asumir nuevos proyectos.`);
+      leftColItems.push(`
+        <div class="dash-exec-metric-item">
+          <i data-lucide="user-check" class="metric-icon green"></i>
+          <span>Hay <span class="highlight-green">${availableCount} persona${availableCount > 1 ? 's' : ''} con disponibilidad</span> para asumir nuevos proyectos.</span>
+        </div>
+      `);
+    } else {
+      leftColItems.push(`
+        <div class="dash-exec-metric-item">
+          <i data-lucide="user-minus" class="metric-icon orange"></i>
+          <span>Sin personal disponible para asignar a nuevos proyectos.</span>
+        </div>
+      `);
     }
-
+    
     if (solicitudes.length > 0) {
-      lines.push(`Se registran <strong>${solicitudes.length} solicitud${solicitudes.length > 1 ? 'es' : ''} nueva${solicitudes.length > 1 ? 's' : ''}</strong> pendientes de asignación.`);
+      leftColItems.push(`
+        <div class="dash-exec-metric-item">
+          <i data-lucide="git-pull-request" class="metric-icon purple"></i>
+          <span>Se registran <strong>${solicitudes.length} solicitud${solicitudes.length > 1 ? 'es' : ''} nueva${solicitudes.length > 1 ? 's' : ''}</strong> pendiente${solicitudes.length > 1 ? 's' : ''} de asignación.</span>
+        </div>
+      `);
+    } else {
+      leftColItems.push(`
+        <div class="dash-exec-metric-item">
+          <i data-lucide="git-pull-request" class="metric-icon gray"></i>
+          <span>No hay solicitudes de proyectos pendientes de asignación.</span>
+        </div>
+      `);
     }
 
+    // Right column: Alertas y Atención
+    if (alerts.overdue.length > 0) {
+      rightColItems.push(`
+        <div class="dash-exec-metric-item highlight-red-bg">
+          <i data-lucide="alert-circle" class="metric-icon red"></i>
+          <span>Hay <span class="highlight-red">${alerts.overdue.length} entrega${alerts.overdue.length > 1 ? 's' : ''} vencida${alerts.overdue.length > 1 ? 's' : ''}</span> que requiere${alerts.overdue.length > 1 ? 'n' : ''} atención inmediata: ${overdueNames}.</span>
+        </div>
+      `);
+    }
+    
+    if (alerts.urgent7d.length > 0) {
+      rightColItems.push(`
+        <div class="dash-exec-metric-item highlight-orange-bg">
+          <i data-lucide="calendar" class="metric-icon orange"></i>
+          <span>Se aproxima${alerts.urgent7d.length > 1 ? 'n' : ''} <span class="highlight-orange">${alerts.urgent7d.length} entrega${alerts.urgent7d.length > 1 ? 's' : ''}</span> en los próximos 7 días.</span>
+        </div>
+      `);
+    }
+    
+    if (alerts.saturated.length > 0) {
+      rightColItems.push(`
+        <div class="dash-exec-metric-item highlight-red-bg">
+          <i data-lucide="flame" class="metric-icon red"></i>
+          <span>Hay <span class="highlight-red">${alerts.saturated.length} persona${alerts.saturated.length > 1 ? 's' : ''} saturada${alerts.saturated.length > 1 ? 's' : ''}</span> (${saturatedNames.join(', ')}). Se aconseja redistribuir la carga.</span>
+        </div>
+      `);
+    }
+    
     if (blocked.length > 0) {
-      const blockedNames = blocked.slice(0, 2).map(p => `"${p.nombre}"`).join(', ');
-      lines.push(`<span class="highlight-orange">${blocked.length} proyecto${blocked.length > 1 ? 's' : ''} pausado${blocked.length > 1 ? 's' : ''}</span>: ${blockedNames}.`);
+      rightColItems.push(`
+        <div class="dash-exec-metric-item highlight-orange-bg">
+          <i data-lucide="pause-circle" class="metric-icon orange"></i>
+          <span>Hay <span class="highlight-orange">${blocked.length} proyecto${blocked.length > 1 ? 's' : ''} pausado${blocked.length > 1 ? 's' : ''}</span>: ${blockedNames}.</span>
+        </div>
+      `);
     }
-
+    
     if (criticalProjects.length > 0) {
-      const criticalNames = criticalProjects.slice(0, 3).map(p => `"${p.nombre}"`).join(', ');
-      const moreText = criticalProjects.length > 3 ? ` y ${criticalProjects.length - 3} más` : '';
-      lines.push(`Proyectos de prioridad crítica/alta en curso: <strong>${criticalProjects.length}</strong> (${criticalNames}${moreText}).`);
+      rightColItems.push(`
+        <div class="dash-exec-metric-item">
+          <i data-lucide="zap" class="metric-icon yellow"></i>
+          <span>Proyectos de prioridad crítica/alta en curso: <strong>${criticalProjects.length}</strong> (${criticalNames}).</span>
+        </div>
+      `);
     }
 
-    return { level, levelLabel, levelIcon, narrative: lines.join(' ') };
+    if (rightColItems.length === 0) {
+      rightColItems.push(`
+        <div class="dash-exec-metric-item" style="background: rgba(34, 197, 94, 0.05); border-color: rgba(34, 197, 94, 0.15);">
+          <i data-lucide="check-circle-2" class="metric-icon green"></i>
+          <span><span class="highlight-green">¡Todo en orden!</span> No se registran alertas críticas, desvíos ni saturación de personal en el radar.</span>
+        </div>
+      `);
+    }
+
+    const htmlNarrative = `
+      <div class="dash-exec-grid">
+        <div class="dash-exec-col">
+          <div class="dash-exec-section-title"><i data-lucide="activity"></i> Operación y Capacidad</div>
+          <div class="dash-exec-metric-list">
+            ${leftColItems.join('')}
+          </div>
+        </div>
+        <div class="dash-exec-col">
+          <div class="dash-exec-section-title"><i data-lucide="alert-triangle"></i> Atención y Desvíos</div>
+          <div class="dash-exec-metric-list">
+            ${rightColItems.join('')}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Plain text version for clipboard
+    const plainTextLines = [];
+    plainTextLines.push(`=== RESUMEN EJECUTIVO: ${levelLabel} ===\n`);
+    
+    plainTextLines.push(`[Operación y Capacidad]`);
+    plainTextLines.push(`• Proyectos activos: ${activeProjects.length}`);
+    plainTextLines.push(`• Equipo de trabajo: ${activeDevs.length} personas`);
+    if (availableCount > 0) {
+      plainTextLines.push(`• Disponibilidad: ${availableCount} persona${availableCount > 1 ? 's' : ''} disponible${availableCount > 1 ? 's' : ''}`);
+    } else {
+      plainTextLines.push(`• Disponibilidad: Sin personal disponible`);
+    }
+    plainTextLines.push(`• Solicitudes pendientes: ${solicitudes.length}\n`);
+
+    plainTextLines.push(`[Atención y Desvíos]`);
+    if (alerts.overdue.length > 0) {
+      plainTextLines.push(`• Entregas vencidas: ${alerts.overdue.length} (${overdueNames})`);
+    }
+    if (alerts.urgent7d.length > 0) {
+      plainTextLines.push(`• Entregas próximas (7d): ${alerts.urgent7d.length}`);
+    }
+    if (alerts.saturated.length > 0) {
+      plainTextLines.push(`• Personas saturadas: ${alerts.saturated.length} (${saturatedNames.join(', ')})`);
+    }
+    if (blocked.length > 0) {
+      plainTextLines.push(`• Proyectos pausados: ${blocked.length} (${blockedNames})`);
+    }
+    if (criticalProjects.length > 0) {
+      plainTextLines.push(`• Proyectos críticos/altos: ${criticalProjects.length} (${criticalNames})`);
+    }
+    if (rightColItems.length === 1 && rightColItems[0].includes('Todo en orden')) {
+      plainTextLines.push(`• Todo bajo control, sin desvíos.`);
+    }
+
+    const plainTextStr = plainTextLines.join('\n');
+
+    return { level, levelLabel, levelIcon, narrative: htmlNarrative, plainText: plainTextStr };
   }
 
   function computeThroughput(allProjects) {
@@ -622,7 +758,6 @@ const DashboardView = (() => {
   }
 
   function renderExecSummary(summary) {
-    const plainText = summary.narrative.replace(/<[^>]*>/g, '');
     return `
       <div class="dash-exec-summary level-${summary.level} animate-slide-up stagger-2">
         <div class="dash-exec-header">
@@ -631,13 +766,13 @@ const DashboardView = (() => {
             <span class="dash-exec-title">Resumen Ejecutivo</span>
           </div>
           <button class="dash-exec-copy-btn" onclick="DashboardView.copyExecSummary()" title="Copiar al portapapeles">
-            📋 Copiar
+            <i data-lucide="copy" style="width: 12px; height: 12px; margin-right: 4px;"></i> Copiar
           </button>
         </div>
         <div class="dash-exec-body" id="exec-summary-text">
           ${summary.narrative}
         </div>
-        <div id="exec-summary-plain" style="display:none">${plainText}</div>
+        <div id="exec-summary-plain" style="display:none">${summary.plainText}</div>
       </div>
     `;
   }
