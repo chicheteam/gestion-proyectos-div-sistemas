@@ -15,7 +15,11 @@ const DashboardView = (() => {
     const projects = allProjects.filter(p => p.estado !== 'archivado');
     const team = DataStore.getTeam();
     const activeProjects = projects.filter(p => !['produccion', 'cancelado'].includes(p.estado));
-    const completedProjects = projects.filter(p => p.estado === 'produccion');
+    const completedProjects = projects.filter(p => {
+      if (p.estado !== 'produccion') return false;
+      const days = DataStore.getDaysInProduction(p);
+      return days === null || days <= 60;
+    });
     const inDevelopment = projects.filter(p => p.estado === 'desarrollo');
     const blocked = projects.filter(p => p.estado === 'pausado');
     const solicitudes = projects.filter(p => p.estado === 'solicitud');
@@ -94,7 +98,7 @@ const DashboardView = (() => {
               <div class="kpi-card-icon green"><i data-lucide="check-circle-2"></i></div>
             </div>
             <div class="kpi-card-value" style="font-size: 1.6rem;">${completedProjects.length}</div>
-            <div class="kpi-card-label">En Producción</div>
+            <div class="kpi-card-label">En Producción (&lt;60 días)</div>
           </div>
           <div class="kpi-card" style="cursor: pointer; padding: 14px; border-left: 3px solid var(--status-orange);" onclick="ProjectsView.setFilter('pausado'); App.navigateTo('projects');" title="Proyectos Pausados / Bloqueados:\n${blocked.map(p => p.nombre).join('\n') || 'Ninguno'}">
             <div class="kpi-card-header" style="margin-bottom: 8px;">
@@ -228,7 +232,7 @@ const DashboardView = (() => {
                 <option value="desarrollo">En Desarrollo</option>
                 <option value="testing">Testing / QA</option>
                 <option value="pausado">Pausados</option>
-                <option value="produccion">En Producción</option>
+                <option value="produccion">En Producción (&lt;60d)</option>
                 <option value="cancelado">Cancelados</option>
                 <option value="todos">Todos los registrados</option>
               </select>
@@ -253,7 +257,7 @@ const DashboardView = (() => {
                 <option value="desarrollo">En Desarrollo</option>
                 <option value="testing">Testing / QA</option>
                 <option value="pausado">Pausados</option>
-                <option value="produccion">En Producción</option>
+                <option value="produccion">En Producción (&lt;60d)</option>
                 <option value="cancelado">Cancelados</option>
                 <option value="todos">Todos los registrados</option>
               </select>
@@ -439,15 +443,30 @@ const DashboardView = (() => {
       { id: 'analisis', label: 'Análisis', color: '#a855f7' },
       { id: 'desarrollo', label: 'Desarrollo', color: '#06b6d4' },
       { id: 'testing', label: 'Testing', color: '#eab308' },
-      { id: 'produccion', label: 'Producción', color: '#22c55e' }
+      { id: 'produccion', label: 'Producción (&lt;60d)', color: '#22c55e' }
     ];
-    const maxCount = Math.max(...stages.map(s => filtered.filter(p => p.estado === s.id).length), 1);
 
-    return stages.map(s => ({
-      ...s,
-      count: filtered.filter(p => p.estado === s.id).length,
-      percent: Math.round((filtered.filter(p => p.estado === s.id).length / maxCount) * 100)
-    }));
+    const getStageCount = (stageId) => {
+      if (stageId === 'produccion') {
+        return filtered.filter(p => {
+          if (p.estado !== 'produccion') return false;
+          const days = DataStore.getDaysInProduction(p);
+          return days === null || days <= 60;
+        }).length;
+      }
+      return filtered.filter(p => p.estado === stageId).length;
+    };
+
+    const maxCount = Math.max(...stages.map(s => getStageCount(s.id)), 1);
+
+    return stages.map(s => {
+      const count = getStageCount(s.id);
+      return {
+        ...s,
+        count,
+        percent: Math.round((count / maxCount) * 100)
+      };
+    });
   }
 
   function generateExecutiveSummary(projects, activeProjects, blocked, solicitudes, team, alerts, criticalProjects) {
@@ -1116,9 +1135,16 @@ const DashboardView = (() => {
       filtered = projects;
       stateLabel = 'Todos los Registrados';
     } else {
-      filtered = projects.filter(p => p.estado === filterState);
+      filtered = projects.filter(p => {
+        if (p.estado !== filterState) return false;
+        if (filterState === 'produccion') {
+          const days = DataStore.getDaysInProduction(p);
+          return days === null || days <= 60;
+        }
+        return true;
+      });
       const statusObj = DataStore.STATUSES.find(s => s.id === filterState);
-      stateLabel = statusObj ? statusObj.label : filterState;
+      stateLabel = statusObj ? (statusObj.id === 'produccion' ? 'En Producción (&lt;60d)' : statusObj.label) : filterState;
     }
 
     const byPriority = { critica: 0, alta: 0, media: 0, baja: 0 };
@@ -1897,9 +1923,16 @@ const DashboardView = (() => {
       filtered = projects;
       stateLabel = 'Todos los Registrados';
     } else {
-      filtered = projects.filter(p => p.estado === filterState);
+      filtered = projects.filter(p => {
+        if (p.estado !== filterState) return false;
+        if (filterState === 'produccion') {
+          const days = DataStore.getDaysInProduction(p);
+          return days === null || days <= 60;
+        }
+        return true;
+      });
       const statusObj = DataStore.STATUSES.find(s => s.id === filterState);
-      stateLabel = statusObj ? statusObj.label : filterState;
+      stateLabel = statusObj ? (statusObj.id === 'produccion' ? 'En Producción (&lt;60d)' : statusObj.label) : filterState;
     }
 
     const scale = DataStore.DIFFICULTY_SCALE;

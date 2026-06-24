@@ -314,35 +314,18 @@ const DataStore = (() => {
     });
   }
 
-  function autoArchiveOldProductionProjects() {
+  function getDaysInProduction(p) {
+    const prodDate = p.fechaRealFin || p.fechaProduccion;
+    if (!prodDate) return null;
     const now = new Date();
-    let changed = false;
+    const start = new Date(prodDate + 'T12:00:00');
+    const diffMs = now - start;
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  }
 
-    for (let i = 0; i < cachedProjects.length; i++) {
-      const p = cachedProjects[i];
-      if (p.estado === 'produccion' && !p.kanbanPinned) {
-        const prodDate = p.fechaProduccion || p.fechaRealFin;
-        if (prodDate) {
-          const start = new Date(prodDate + 'T12:00:00');
-          const diffDays = Math.floor((now - start) / (1000 * 60 * 60 * 24));
-          if (diffDays > 60) {
-            cachedProjects[i].estado = 'archivado';
-            cachedProjects[i].updatedAt = new Date().toISOString();
-            changed = true;
-            
-            // Sync this single project
-            authFetch(`${API_BASE}/projects/${p.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(cachedProjects[i])
-            }).catch(err => console.error('Error auto-archiving project:', err));
-
-            addHistory('update', 'project', p.id, `Proyecto "${p.nombre}" archivado automáticamente (más de 60 días en producción)`);
-          }
-        }
-      }
-    }
-    return changed;
+  function autoArchiveOldProductionProjects() {
+    // Disabled auto-archiving to keep projects in "En Producción" state in projects view.
+    return false;
   }
 
   function deleteProject(id) {
@@ -1089,6 +1072,7 @@ const DataStore = (() => {
     // Init Cache
     initializeCache,
     // Helpers
+    getDaysInProduction,
     autoArchiveOldProductionProjects,
     getTeamMemberName: (id) => {
       if (!id) return '—';

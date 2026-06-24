@@ -20,11 +20,10 @@ const KanbanView = (() => {
   function render() {
     const container = document.getElementById('page-content');
 
-    // Count hidden production projects (over 60 days and not pinned)
+    // Count hidden production projects (over 60 days)
     const allProdProjects = DataStore.getProjects().filter(p => p.estado === 'produccion');
     const hiddenProd = allProdProjects.filter(p => {
-      if (p.kanbanPinned) return false;
-      const days = getDaysInProduction(p);
+      const days = DataStore.getDaysInProduction(p);
       return days !== null && days > PRODUCTION_DAYS_LIMIT;
     });
 
@@ -92,24 +91,15 @@ const KanbanView = (() => {
     if (window.lucide) lucide.createIcons();
   }
 
-  function getDaysInProduction(p) {
-    const prodDate = p.fechaProduccion || p.fechaRealFin;
-    if (!prodDate) return null;
-    const now = new Date();
-    const start = new Date(prodDate + 'T12:00:00');
-    const diffMs = now - start;
-    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  }
+
 
   function getProjectsForColumn(statusId) {
     let projects = DataStore.getProjects().filter(p => p.estado === statusId);
 
-    // For production column: auto-filter by 60-day limit
+    // For production column: auto-filter by 60-day limit (strictly <= 60 days)
     if (statusId === 'produccion') {
       projects = projects.filter(p => {
-        // Always show if manually pinned
-        if (p.kanbanPinned) return true;
-        const days = getDaysInProduction(p);
+        const days = DataStore.getDaysInProduction(p);
         // Show if no date available (can't determine age) or within limit
         if (days === null) return true;
         return days <= PRODUCTION_DAYS_LIMIT;
@@ -147,12 +137,11 @@ const KanbanView = (() => {
     // Production-specific: days indicator + action buttons
     let productionInfo = '';
     if (p.estado === 'produccion') {
-      const days = getDaysInProduction(p);
+      const days = DataStore.getDaysInProduction(p);
       const daysLabel = days !== null ? days + ' día' + (days !== 1 ? 's' : '') : '—';
       const remaining = days !== null ? Math.max(0, PRODUCTION_DAYS_LIMIT - days) : null;
       const pct = days !== null ? Math.min(100, Math.round((days / PRODUCTION_DAYS_LIMIT) * 100)) : 0;
       const barColor = pct > 80 ? 'var(--status-orange)' : pct > 50 ? '#eab308' : 'var(--status-green, #22c55e)';
-      const isPinned = p.kanbanPinned;
       const canEdit = AuthManager.canEditProject(p);
 
       productionInfo = `
@@ -166,12 +155,6 @@ const KanbanView = (() => {
           </div>
           ${canEdit ? `
           <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end;">
-            <button onclick="event.stopPropagation(); KanbanView.togglePin('${p.id}')" 
-                    title="${isPinned ? 'Desfijar (se ocultará tras 60 días)' : 'Fijar (permanece visible siempre)'}" 
-                    style="font-size:0.62rem;padding:2px 6px;border-radius:4px;border:1px solid ${isPinned ? 'rgba(99,102,241,0.3)' : 'var(--border-subtle)'};background:${isPinned ? 'rgba(99,102,241,0.1)' : 'transparent'};color:${isPinned ? 'var(--primary-400)' : 'var(--text-tertiary)'};cursor:pointer;display:inline-flex;align-items:center;gap:3px;">
-              <i data-lucide="${isPinned ? 'pin-off' : 'pin'}" style="width:10px;height:10px;pointer-events:none;"></i>
-              ${isPinned ? 'Desfijar' : 'Fijar'}
-            </button>
             <button onclick="event.stopPropagation(); KanbanView.archiveFromKanban('${p.id}')" 
                     title="Archivar proyecto" 
                     style="font-size:0.62rem;padding:2px 6px;border-radius:4px;border:1px solid rgba(148,163,184,0.2);background:transparent;color:var(--text-tertiary);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">

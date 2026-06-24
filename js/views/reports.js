@@ -99,12 +99,16 @@ const ReportsView = (() => {
           <div>
             <h4 style="font-size:0.78rem;color:var(--text-tertiary);text-transform:uppercase;margin-bottom:12px;">Proyectos por Estado</h4>
             ${DataStore.STATUSES.map(s => {
-              const count = projects.filter(p => p.estado === s.id).length;
+              let count = projects.filter(p => p.estado === s.id).length;
+              if (s.id === 'produccion') {
+                count = projects.filter(p => p.estado === 'produccion' && (DataStore.getDaysInProduction(p) === null || DataStore.getDaysInProduction(p) <= 60)).length;
+              }
               const pct = projects.length > 0 ? Math.round((count / projects.length) * 100) : 0;
+              const label = s.id === 'produccion' ? 'En Producción (&lt;60 días)' : s.label;
               return `
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
                   <span style="width:10px;height:10px;border-radius:3px;background:${s.color};flex-shrink:0;"></span>
-                  <span style="flex:1;font-size:0.8rem;color:var(--text-secondary);">${s.label}</span>
+                  <span style="flex:1;font-size:0.8rem;color:var(--text-secondary);">${label}</span>
                   <span style="font-size:0.8rem;font-weight:600;color:var(--text-primary);min-width:30px;text-align:right;">${count}</span>
                   <div style="width:80px;height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden;">
                     <div style="height:100%;width:${pct}%;background:${s.color};border-radius:3px;transition:width 0.5s;"></div>
@@ -122,7 +126,7 @@ const ReportsView = (() => {
               <div>Inactivos: <strong style="color:var(--status-red);">${team.filter(m => !m.activo).length}</strong></div>
               <div>Proyectos totales: <strong style="color:var(--text-primary);">${projects.length}</strong></div>
               <div>En desarrollo activo: <strong style="color:var(--status-cyan);">${projects.filter(p => ['analisis', 'desarrollo', 'testing'].includes(p.estado)).length}</strong></div>
-              <div>Completados: <strong style="color:var(--status-green);">${projects.filter(p => p.estado === 'produccion').length}</strong></div>
+              <div>Completados (&lt;60 días): <strong style="color:var(--status-green);">${projects.filter(p => p.estado === 'produccion' && (DataStore.getDaysInProduction(p) === null || DataStore.getDaysInProduction(p) <= 60)).length}</strong></div>
             </div>
           </div>
         </div>
@@ -279,7 +283,7 @@ const ReportsView = (() => {
         <div class="kpi-row">
           <div class="kpi"><div class="kpi-val">${projects.length}</div><div class="kpi-label">Total Proyectos</div></div>
           <div class="kpi"><div class="kpi-val">${activeProjects.length}</div><div class="kpi-label">En Desarrollo Activo</div></div>
-          <div class="kpi"><div class="kpi-val">${byStatus.produccion || 0}</div><div class="kpi-label">En Producción</div></div>
+          <div class="kpi"><div class="kpi-val">${projects.filter(p => p.estado === 'produccion' && (DataStore.getDaysInProduction(p) === null || DataStore.getDaysInProduction(p) <= 60)).length}</div><div class="kpi-label">En Producción (&lt;60 días)</div></div>
           <div class="kpi"><div class="kpi-val">${team.filter(m => m.activo).length}</div><div class="kpi-label">Miembros Activos</div></div>
         </div>
 
@@ -287,9 +291,13 @@ const ReportsView = (() => {
         <table>
           <tr><th>Estado</th><th>Cantidad</th><th>Porcentaje</th></tr>
           ${DataStore.STATUSES.map(s => {
-            const count = byStatus[s.id] || 0;
+            let count = byStatus[s.id] || 0;
+            if (s.id === 'produccion') {
+              count = projects.filter(p => p.estado === 'produccion' && (DataStore.getDaysInProduction(p) === null || DataStore.getDaysInProduction(p) <= 60)).length;
+            }
             const pct = projects.length > 0 ? Math.round((count / projects.length) * 100) : 0;
-            return `<tr><td>${s.label}</td><td>${count}</td><td>${pct}%</td></tr>`;
+            const label = s.id === 'produccion' ? 'En Producción (&lt;60 días)' : s.label;
+            return `<tr><td>${label}</td><td>${count}</td><td>${pct}%</td></tr>`;
           }).join('')}
         </table>
 
